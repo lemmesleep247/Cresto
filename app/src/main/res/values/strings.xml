@@ -53,8 +53,8 @@
     <string name="language">Language</string>
     <string name="chinese">Chinese</string>
     <string name="system_language">System</string>
-    <string name="english">English</string>
-    <string name="simplified_chinese">Simplified Chinese</string>
+    <string name="english" translatable="false">English</string>
+    <string name="simplified_chinese" translatable="false">简体中文</string>
     <string name="todos">Todos</string>
     <string name="auto_add_to_system_calendar">Auto-add to System Calendar</string>
     <string name="automatically_add_new_todos_as_events_in_system_calendar">Automatically add new todos as events in the system calendar.</string>
@@ -64,6 +64,10 @@
     <string name="add_a_marker_to_overdue_todos_on_the_next_day">Add a marker to overdue todos on the next day.</string>
     <string name="advanced">Advanced</string>
     <string name="shizuku_permission">Shizuku Permission</string>
+    <string name="error_shizuku_not_running">Shizuku is not running</string>
+    <string name="error_shizuku_not_running_start">Shizuku is not running, please start Shizuku first</string>
+    <string name="error_shizuku_permission_denied">Shizuku permission not granted</string>
+    <string name="error_command_failed">Command execution failed (%1$d): %2$s</string>
     <string name="enable_extract_screen_quick_toggle">Enable "Extract Screen" Quick Toggle</string>
     <string name="add_a_quick_toggle_to_control_center_for_one_tap_ai_screen_extraction_shizuku_required">Add a quick toggle to Control Center for one-tap AI screen extraction. Shizuku permission is required.</string>
     <string name="extract_screen_tile_label">Extract Screen</string>
@@ -94,7 +98,6 @@
     <string name="share_extract_progress_ai">Extracting todos with AI…</string>
     <string name="share_extract_progress_importing">Importing todos…</string>
     <string name="shizuku_permission_required">Shizuku permission required</string>
-    <string name="shizuku_not_running">Shizuku is not running</string>
     <string name="ready">Ready</string>
     <string name="disabled">Disabled</string>
     <string name="boost_your_experience_with_intelligent_cresto_function_calling">Boost your experience with intelligent Cresto function calling.</string>

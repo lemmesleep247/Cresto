@@ -58,8 +58,6 @@
     <string name="language">语言</string>
     <string name="chinese">中文</string>
     <string name="system_language">跟随系统</string>
-    <string name="english">English</string>
-    <string name="simplified_chinese">简体中文</string>
     <string name="todos">待办事项</string>
     <string name="auto_add_to_system_calendar">自动添加到系统日历</string>
     <string name="automatically_add_new_todos_as_events_in_system_calendar">新建待办事项时，自动添加为系统日历中的日程。</string>
@@ -69,6 +67,10 @@
     <string name="add_a_marker_to_overdue_todos_on_the_next_day">在次日为已逾期待办事项添加标记。</string>
     <string name="advanced">高级</string>
     <string name="shizuku_permission">Shizuku 权限</string>
+    <string name="error_shizuku_not_running">Shizuku 未运行</string>
+    <string name="error_shizuku_not_running_start">Shizuku 未运行，请先启动 Shizuku</string>
+    <string name="error_shizuku_permission_denied">未授予 Shizuku 权限</string>
+    <string name="error_command_failed">命令执行失败(%1$d): %2$s</string>
     <string name="enable_extract_screen_quick_toggle">启用“提取屏幕”快捷开关</string>
     <string name="add_a_quick_toggle_to_control_center_for_one_tap_ai_screen_extraction_shizuku_required">可在控制中心添加快捷开关，通过 AI 一键提取屏幕上的待办事项。此功能需要 Shizuku 权限。</string>
     <string name="extract_screen_tile_label">提取屏幕</string>
@@ -99,7 +101,6 @@
     <string name="share_extract_progress_ai">AI 正在提取待办…</string>
     <string name="share_extract_progress_importing">正在导入待办…</string>
     <string name="shizuku_permission_required">需要 Shizuku 权限</string>
-    <string name="shizuku_not_running">Shizuku 未运行</string>
     <string name="ready">就绪</string>
     <string name="disabled">已关闭</string>
     <string name="boost_your_experience_with_intelligent_cresto_function_calling">利用Cresto智能调用，提升体验。</string>

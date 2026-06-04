@@ -10,7 +10,7 @@ import com.nevoit.cresto.feature.settings.util.SettingsManager
 
 class ExtractScreenTileService : TileService() {
 
-    private val screenshotCapturer = ShizukuScreenshotCapturer()
+    private val screenshotCapturer by lazy { ShizukuScreenshotCapturer(this) }
 
     override fun onStartListening() {
         super.onStartListening()

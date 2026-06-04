@@ -99,6 +99,7 @@ fun GeneralScreen(settingsViewModel: SettingsViewModel = viewModel()) {
     val isAutoAddToSystemCalendarEnabled by settingsViewModel.isAutoAddToSystemCalendar
     val context = LocalContext.current
     val requirePermission = stringResource(R.string.calendar_sync_permission_required)
+    val shizukuNotRunning = stringResource(R.string.error_shizuku_not_running)
     val calendarPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -114,7 +115,7 @@ fun GeneralScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             ).show()
         }
     }
-    val screenshotCapturer = remember { ShizukuScreenshotCapturer() }
+    val screenshotCapturer = remember { ShizukuScreenshotCapturer(context) }
     var isShizukuPermissionGranted by remember {
         mutableStateOf(screenshotCapturer.hasPermission())
     }
@@ -356,7 +357,7 @@ fun GeneralScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                                             screenshotCapturer.hasPermission()
                                         Toast.makeText(
                                             context,
-                                            error.localizedMessage ?: "Shizuku 未运行",
+                                            error.localizedMessage ?: shizukuNotRunning,
                                             Toast.LENGTH_SHORT
                                         ).show()
                                     }

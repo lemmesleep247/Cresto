@@ -36,7 +36,11 @@ class ScreenExtractService : Service() {
                     this@ScreenExtractService,
                     ScreenExtractPhase.Starting
                 )
-                val repository = ScreenExtractRepository(todoRepository, alarmScheduler)
+                val repository = ScreenExtractRepository(
+                    todoRepository = todoRepository,
+                    alarmScheduler = alarmScheduler,
+                    screenshotCapturer = ShizukuScreenshotCapturer(this@ScreenExtractService)
+                )
                 val items = withContext(Dispatchers.IO) {
                     repository.captureAndExtract { phase ->
                         ScreenExtractNotifications.showProgress(this@ScreenExtractService, phase)

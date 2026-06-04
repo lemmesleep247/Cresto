@@ -7,7 +7,7 @@ import com.nevoit.cresto.data.utils.EventItem
 class ScreenExtractRepository(
     private val todoRepository: TodoRepository,
     private val alarmScheduler: TodoAlarmScheduler,
-    private val screenshotCapturer: ShizukuScreenshotCapturer = ShizukuScreenshotCapturer(),
+    private val screenshotCapturer: ShizukuScreenshotCapturer,
     private val aiTodoExtractor: AiTodoExtractor = AiTodoExtractor()
 ) {
     suspend fun captureExtractAndInsert(
