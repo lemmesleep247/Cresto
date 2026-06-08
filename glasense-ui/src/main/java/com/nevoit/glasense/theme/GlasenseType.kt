@@ -59,28 +59,28 @@ val GlasenseTypeStandard = GlasenseType(
         fontWeight = FontWeight.Normal,
         fontSize = 24.sp,
         lineHeight = 24.sp,
-        letterSpacing = (-0.28).sp
+        letterSpacing = 0.sp
     ),
     title2Emphasized = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.SemiBold,
         fontSize = 24.sp,
         lineHeight = 24.sp,
-        letterSpacing = (-0.28).sp
+        letterSpacing = 0.sp
     ),
     title3 = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
         fontSize = 20.sp,
         lineHeight = 20.sp,
-        letterSpacing = (-0.3).sp
+        letterSpacing = 0.sp
     ),
     title3Emphasized = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.SemiBold,
         fontSize = 20.sp,
         lineHeight = 20.sp,
-        letterSpacing = (-0.3).sp
+        letterSpacing = 0.sp
     ),
     headline = TextStyle(
         fontFamily = FontFamily.Default,
@@ -94,14 +94,14 @@ val GlasenseTypeStandard = GlasenseType(
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         lineHeight = 20.sp,
-        letterSpacing = 0.sp
+        letterSpacing = 0.1.sp
     ),
     bodyEmphasized = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.SemiBold,
         fontSize = 16.sp,
         lineHeight = 20.sp,
-        letterSpacing = 0.sp
+        letterSpacing = 0.1.sp
     ),
     subHeadline = TextStyle(
         fontFamily = FontFamily.Default,

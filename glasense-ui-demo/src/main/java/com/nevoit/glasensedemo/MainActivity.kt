@@ -6,29 +6,27 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.retain.retain
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.nevoit.glasense.component.ListStack
+import com.nevoit.glasense.component.ListRowAccessory
 import com.nevoit.glasense.component.ListStyle
 import com.nevoit.glasense.component.PageHeader
 import com.nevoit.glasense.component.ProgressView
@@ -62,14 +60,13 @@ private fun GlasenseDemoApp() {
     val overscrollFactory = rememberOffsetOverscrollFactory(Orientation.Vertical)
     CompositionLocalProvider(LocalOverscrollFactory provides overscrollFactory) {
         GlasenseTheme(darkTheme = darkTheme) {
-            var showSheet by remember { mutableStateOf(false) }
-            DemoScreen(onShowSheet = { showSheet = true })
+            DemoScreen()
         }
     }
 }
 
 @Composable
-private fun DemoScreen(onShowSheet: () -> Unit) {
+private fun DemoScreen() {
     var progress by remember { mutableFloatStateOf(0.5f) }
     val colors = mapOf(
         "Red" to Red500,
@@ -94,36 +91,94 @@ private fun DemoScreen(onShowSheet: () -> Unit) {
         "Card Background" to GlasenseTheme.colors.cardBackground
     )
 
+    var checked by retain { mutableStateOf(false) }
+    var style by retain { mutableStateOf<ListStyle>(ListStyle.InsetGrouped) }
+
     ListStack(
         modifier = Modifier.fillMaxSize(),
-        style = ListStyle.InsetGrouped,
+        style = style,
         contentPadding = PaddingValues(bottom = 28.dp)
     ) {
         PageHeader(title = "Gallery")
 
-        Section(header = "Progress") {
+
+        Section(header = { "Settings" }) {
+            SwitchRow(
+                checked = style == ListStyle.Plain,
+                onCheckedChange = { style = if (it) ListStyle.Plain else ListStyle.InsetGrouped }
+            ) {
+                Text("Plain Style")
+            }
+        }
+        Section(header = { "Trailing" }) {
+            SwitchRow(
+                checked = checked,
+                onCheckedChange = { checked = it }
+            ) {
+                Text("Switch")
+            }
+            SwitchRow(
+                enabled = false,
+                checked = checked,
+                onCheckedChange = { checked = it }
+            ) {
+                Text("Disabled")
+            }
+            SwitchRow(
+                checked = checked,
+                onCheckedChange = { checked = it },
+                trailing = { Text("Trailing") }
+            ) {
+                Text("SwitchRow with")
+            }
+            Row(
+                onClick = { },
+                trailing = { Text("Trailing") }) {
+                Text("Text")
+            }
+            Row(
+                onClick = {},
+                trailing = { Text("and Label") },
+                accessory = ListRowAccessory.Chevron
+            ) {
+                Text("Chevron")
+            }
+            Row(
+                onClick = {},
+                trailing = { Text("Danger") },
+                destructive = true
+            ) {
+                Text("Delete")
+            }
+        }
+        Section(header = { "Progress" }) {
             Row {
                 ProgressView()
             }
             Row {
                 ProgressView(
                     value = progress,
-                    modifier = Modifier.fillMaxWidth(),
                     progressViewStyle = ProgressViewStyle.Circular
                 )
             }
             Row { ProgressView(value = progress, modifier = Modifier.fillMaxWidth()) }
         }
 
-        Section(header = "Colors", footer = "Colors from Tailwind CSS Color Palette.") {
+        Section(
+            header = { "Colors" },
+            footer = { "Colors from Tailwind CSS Color Palette." }
+        ) {
             for (color in colors) {
-                LeadingRow(onClick = {}, leading = { ColorBox(color.value) }) {
+                Row(onClick = {}, leading = { ColorBox(color.value) }) {
                     Text(color.key)
                 }
             }
         }
 
-        Section(header = "Typography", footer = "Default typography.") {
+        Section(
+            header = { "Typography" },
+            footer = { "Default typography." }
+        ) {
             Row(onClick = {}) {
                 Text("Large title", style = GlasenseTheme.type.largeTitleEmphasized)
             }
@@ -179,18 +234,4 @@ private fun ColorBox(color: Color) {
             .background(color)
             .border(1.dp, GlasenseTheme.colors.scrimNormal, CircleShape)
     )
-}
-
-@Composable
-private fun DemoChip(text: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(100.dp))
-            .background(GlasenseTheme.colors.scrimNormal)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(text, style = GlasenseTheme.type.subHeadline)
-    }
 }
