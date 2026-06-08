@@ -13,7 +13,6 @@ object AppIconManager {
     private const val ALIAS_BLUEBERRY = "com.nevoit.cresto.AppIconBlueberry"
     private const val ALIAS_PEACH = "com.nevoit.cresto.AppIconPeach"
 
-
     enum class AppIcon(
         val alias: String,
         @StringRes val displayNameResId: Int,

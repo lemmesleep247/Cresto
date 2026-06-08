@@ -76,7 +76,6 @@ private fun glasenseColorsFromScheme(scheme: ColorScheme, isDark: Boolean): Glas
         onSegmentedControlBackground = scheme.onSecondaryContainer,
         segmentedControlIndicator = scheme.secondary,
         onSegmentedControlIndicator = scheme.onSecondary,
-        background = scheme.background
     )
 }
 
