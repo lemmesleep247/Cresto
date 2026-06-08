@@ -9,6 +9,7 @@ object AppLocaleManager {
     const val ENGLISH = "en"
     const val SIMPLIFIED_CHINESE = "zh-CN"
     const val HINDI = "hi"
+    const val JAPANESE = "ja"
 
     fun getLanguageTag(context: Context): String {
         return context.getSystemService(LocaleManager::class.java)

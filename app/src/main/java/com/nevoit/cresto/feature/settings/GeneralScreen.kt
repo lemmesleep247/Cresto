@@ -161,10 +161,12 @@ fun GeneralScreen(settingsViewModel: SettingsViewModel = viewModel()) {
     val englishText = stringResource(R.string.english)
     val simplifiedChineseText = stringResource(R.string.simplified_chinese)
     val hindiText = stringResource(R.string.hindi)
+    val japaneseText = stringResource(R.string.japanese)
     val currentLanguageText = when (selectedLanguageTag) {
         AppLocaleManager.ENGLISH -> englishText
         AppLocaleManager.SIMPLIFIED_CHINESE -> simplifiedChineseText
         AppLocaleManager.HINDI -> hindiText
+        AppLocaleManager.JAPANESE -> japaneseText
         else -> systemLanguageText
     }
     val languageMenuItems = remember(
@@ -202,6 +204,13 @@ fun GeneralScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                 isSelected = { selectedLanguageTag == AppLocaleManager.HINDI },
                 onClick = {
                     AppLocaleManager.setLanguageTag(context, AppLocaleManager.HINDI)
+                }
+            ),
+            SelectiveMenuItemData(
+                text = japaneseText,
+                isSelected = { selectedLanguageTag == AppLocaleManager.JAPANESE },
+                onClick = {
+                    AppLocaleManager.setLanguageTag(context, AppLocaleManager.JAPANESE)
                 }
             )
         )
