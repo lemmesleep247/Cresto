@@ -9,8 +9,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -28,8 +30,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -43,6 +45,7 @@ import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.nevoit.cresto.R
 import com.nevoit.cresto.data.todo.EXTRA_TODO_ID
+import com.nevoit.cresto.data.todo.HomeGroupFilter
 import com.nevoit.cresto.data.todo.TodoViewModel
 import com.nevoit.cresto.feature.detail.DetailActivity
 import com.nevoit.cresto.feature.settings.util.SettingsManager
@@ -50,12 +53,15 @@ import com.nevoit.cresto.feature.settings.util.SettingsViewModel
 import com.nevoit.cresto.feature.settings.util.SortOption
 import com.nevoit.cresto.feature.settings.util.SortOrder
 import com.nevoit.cresto.theme.AppColors
+import com.nevoit.cresto.ui.components.glasense.FolderChipButton
+import com.nevoit.cresto.ui.components.glasense.GlasenseChipGroup
 import com.nevoit.cresto.ui.components.glasense.GlasenseMenuItem
 import com.nevoit.cresto.ui.components.glasense.GlasensePageHeader
 import com.nevoit.cresto.ui.components.glasense.isScrolledPast
 import com.nevoit.cresto.ui.components.glasense.rememberSwipeableListState
 import com.nevoit.cresto.ui.components.packed.PageContent
 import com.nevoit.glasense.component.paddingItem
+import com.nevoit.glasense.core.component.HGap
 import com.nevoit.glasense.core.component.VGap
 import com.nevoit.glasense.theme.tokens.Springs
 import kotlinx.coroutines.Job
@@ -80,7 +86,9 @@ fun BoxScope.HomeScreen(
         onDispose { completionSoundPlayer.release() }
     }
 
-    val homeTodosState by viewModel.homeTodos.collectAsStateWithLifecycle()
+    val homeTodos by viewModel.homeTodos.collectAsStateWithLifecycle()
+    val homeGroups by viewModel.homeGroups.collectAsStateWithLifecycle()
+    val selectedHomeGroupFilter by viewModel.homeGroupFilter.collectAsStateWithLifecycle()
     val selectedItemIds by viewModel.selectedItemIds.collectAsState()
     val isSelectionModeActive by viewModel.isSelectionModeActive.collectAsState()
     val isSearchBoxOpen by viewModel.isSearchBoxOpen.collectAsState()
@@ -118,13 +126,34 @@ fun BoxScope.HomeScreen(
     val currentSortOrder = remember(sortOrderOrdinal) {
         SortOrder.entries.getOrElse(sortOrderOrdinal) { SortOrder.DESCENDING }
     }
-    LaunchedEffect(currentSortOption, currentSortOrder) {
-        viewModel.updateHomeSort(currentSortOption, currentSortOrder)
+    val allFilterTitle = stringResource(R.string.all)
+    val allTodosTitle = stringResource(R.string.todos)
+    val ungroupedTodosTitle = stringResource(R.string.ungrouped_todos)
+    val homeGroupNames = remember(homeGroups) { homeGroups.associate { it.id to it.name } }
+    val homeGroupFilters = remember(homeGroups) {
+        listOf(HomeGroupFilter.All, HomeGroupFilter.Ungrouped) +
+                homeGroups.map { HomeGroupFilter.Group(it.id) }
     }
+    val newTodoGroupId = (selectedHomeGroupFilter as? HomeGroupFilter.Group)?.id
 
-    val todoList = homeTodosState.todos
-    val (incompleteTodos, completeTodos) = remember(todoList) {
-        todoList.partition { !it.todoItem.isCompleted }
+    val (incompleteTodos, completeTodos) = remember(
+        homeTodos,
+        currentSortOption,
+        currentSortOrder
+    ) {
+        val incomplete = sortTodos(
+            list = homeTodos.filter { !it.todoItem.isCompleted },
+            option = currentSortOption,
+            order = currentSortOrder,
+            type = TodoListType.INCOMPLETED
+        )
+        val complete = sortTodos(
+            list = homeTodos.filter { it.todoItem.isCompleted },
+            option = currentSortOption,
+            order = currentSortOrder,
+            type = TodoListType.COMPLETED
+        )
+        incomplete to complete
     }
     var completedVisible by rememberSaveable { mutableStateOf(true) }
 
@@ -133,22 +162,6 @@ fun BoxScope.HomeScreen(
     var latestCheckboxTapPosition by remember { mutableStateOf(Offset.Unspecified) }
     var confettiTriggerPosition by remember { mutableStateOf(Offset.Unspecified) }
     val pendingUpdateJobs = remember { mutableStateMapOf<Int, Job>() }
-
-    val incompleteCount = incompleteTodos.size
-    LaunchedEffect(lazyListState, homeTodosState.loadedLimit, homeTodosState.hasMore) {
-        if (!homeTodosState.hasMore) return@LaunchedEffect
-
-        snapshotFlow {
-            val layoutInfo = lazyListState.layoutInfo
-            val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-            val totalItemsCount = layoutInfo.totalItemsCount
-            totalItemsCount > 0 && lastVisibleIndex >= totalItemsCount - 6
-        }.collect { shouldLoadMore ->
-            if (shouldLoadMore) {
-                viewModel.loadNextHomeTodoPage()
-            }
-        }
-    }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -188,7 +201,6 @@ fun BoxScope.HomeScreen(
         modifier = Modifier.layerBackdrop(backdrop),
         tabPadding = true
     ) {
-
         if (isSearchBoxOpen) {
             item(key = "top_padding") {
                 Box(
@@ -202,9 +214,32 @@ fun BoxScope.HomeScreen(
             item(key = "title") {
                 GlasensePageHeader(
                     modifier = Modifier.animateItem(placementSpec = Springs.crisp()),
-                    title = stringResource(R.string.all_todos)
+                    title = allTodosTitle
                 )
             }
+        }
+
+        item(key = "chips") {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                FolderChipButton { }
+                HGap(8.dp)
+                GlasenseChipGroup(
+                    items = homeGroupFilters,
+                    selectedItem = selectedHomeGroupFilter,
+                    itemLabel = { filter ->
+                        when (filter) {
+                            HomeGroupFilter.All -> allFilterTitle
+                            HomeGroupFilter.Ungrouped -> ungroupedTodosTitle
+                            is HomeGroupFilter.Group -> homeGroupNames[filter.id] ?: allFilterTitle
+                        }
+                    },
+                    onItemSelected = viewModel::updateHomeGroupFilter
+                )
+            }
+            VGap()
         }
 
         itemsIndexed(
@@ -257,7 +292,7 @@ fun BoxScope.HomeScreen(
                         }
                     }
 
-                    if (checked && incompleteCount == 1 && !homeTodosState.hasMore) {
+                    if (checked && incompleteTodos.size == 1) {
                         confettiTriggerPosition = latestCheckboxTapPosition
                         confettiHideJob?.cancel()
                         scope.launch {
@@ -343,8 +378,10 @@ fun BoxScope.HomeScreen(
     HomeTopAppBar(
         menuController = showMenu,
         menuItems = menuItemsSort,
+        title = allTodosTitle,
         isTitleVisible = isSmallTitleVisible,
         backdrop = backdrop,
         viewModel = viewModel,
+        newTodoGroupId = newTodoGroupId
     )
 }

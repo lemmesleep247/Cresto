@@ -7,8 +7,6 @@ import com.nevoit.cresto.data.statistics.TodoStat
 import com.nevoit.cresto.data.todo.calendar.CalendarSyncSummary
 import com.nevoit.cresto.data.todo.reminder.TodoAlarmScheduler
 import com.nevoit.cresto.data.utils.EventItem
-import com.nevoit.cresto.feature.settings.util.SortOption
-import com.nevoit.cresto.feature.settings.util.SortOrder
 import com.tencent.mmkv.MMKV
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -33,7 +31,8 @@ import java.time.temporal.ChronoUnit
 
 data class BottomSheetUiState(
     val isVisible: Boolean = false,
-    val initialDate: LocalDate? = null
+    val initialDate: LocalDate? = null,
+    val initialGroupId: Int? = null
 )
 
 data class BackupUiState(
@@ -97,24 +96,6 @@ private data class InsightWeekStats(
     val completedTrend: List<DailyStat>
 )
 
-private const val HOME_TODO_PAGE_SIZE = 30
-
-data class HomeTodoListState(
-    val todos: List<TodoItemWithSubTodos> = emptyList(),
-    val totalCount: Int = 0,
-    val loadedLimit: Int = HOME_TODO_PAGE_SIZE
-) {
-    val hasMore: Boolean
-        get() = todos.size < totalCount
-}
-
-private data class HomeTodoQuery(
-    val searchQuery: String,
-    val sortOption: SortOption,
-    val sortOrder: SortOrder,
-    val limit: Int
-)
-
 class TodoViewModel(
     private val repository: TodoRepository,
     private val alarmScheduler: TodoAlarmScheduler
@@ -124,6 +105,28 @@ class TodoViewModel(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
+
+    val homeGroups: StateFlow<List<TodoGroup>> = repository.todoGroups.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    private val _homeGroupFilter = MutableStateFlow<HomeGroupFilter>(HomeGroupFilter.All)
+    val homeGroupFilter: StateFlow<HomeGroupFilter> = _homeGroupFilter.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            homeGroups.collect { groups ->
+                val selectedFilter = _homeGroupFilter.value
+                if (selectedFilter is HomeGroupFilter.Group &&
+                    groups.none { it.id == selectedFilter.id }
+                ) {
+                    _homeGroupFilter.value = HomeGroupFilter.All
+                }
+            }
+        }
+    }
 
     fun getTodoWithSubTodos(id: Int): Flow<TodoItemWithSubTodos?> = repository.getTodoById(id)
 
@@ -159,40 +162,27 @@ class TodoViewModel(
     }
 
     fun toggleSelectAllItems() {
-        val visibleIds = getVisibleTodoIds()
-        if (visibleIds.isEmpty()) return
-
-        _selectedItemIds.update { currentIds ->
-            val isVisibleAllSelected = visibleIds.all(currentIds::contains)
-            if (isVisibleAllSelected) {
-                currentIds - visibleIds
-            } else {
-                currentIds + visibleIds
-            }
-        }
-
-        _isSelectionModeActive.value = _selectedItemIds.value.isNotEmpty()
+        toggleSelectionForIds(homeTodos.value.map { it.todoItem.id })
     }
 
     fun toggleSelectAllItems(visibleIds: Collection<Int>) {
-        if (visibleIds.isEmpty()) return
+        toggleSelectionForIds(visibleIds)
+    }
 
+    private fun toggleSelectionForIds(ids: Collection<Int>) {
+        if (ids.isEmpty()) return
+        val idSet = ids.toSet()
         _selectedItemIds.update { currentIds ->
-            val isVisibleAllSelected = visibleIds.all(currentIds::contains)
-            if (isVisibleAllSelected) {
-                currentIds - visibleIds.toSet()
+            val isAllSelected = idSet.all(currentIds::contains)
+            if (isAllSelected) {
+                currentIds - idSet
             } else {
-                currentIds + visibleIds.toSet()
+                currentIds + ids
             }
         }
 
         _isSelectionModeActive.value = _selectedItemIds.value.isNotEmpty()
     }
-
-    private fun getVisibleTodoIds(): Set<Int> {
-        return homeTodos.value.todos.map { it.todoItem.id }.toSet()
-    }
-
 
     fun clearSelections() {
         _selectedItemIds.value = emptySet()
@@ -287,7 +277,7 @@ class TodoViewModel(
         val selectedIds = _selectedItemIds.value
         if (selectedIds.size < 2) return@launch
 
-        val orderedSelectedIds = homeTodos.value.todos
+        val orderedSelectedIds = homeTodos.value
             .map { it.todoItem.id }
             .filter(selectedIds::contains)
             .ifEmpty { selectedIds.toList() }
@@ -427,12 +417,24 @@ class TodoViewModel(
     private val _bottomSheetState = MutableStateFlow(BottomSheetUiState())
     val bottomSheetState = _bottomSheetState.asStateFlow()
 
-    fun showBottomSheet(date: LocalDate? = null) {
-        _bottomSheetState.update { it.copy(isVisible = true, initialDate = date) }
+    fun showBottomSheet(date: LocalDate? = null, groupId: Int? = null) {
+        _bottomSheetState.update {
+            it.copy(
+                isVisible = true,
+                initialDate = date,
+                initialGroupId = groupId
+            )
+        }
     }
 
     fun hideBottomSheet() {
-        _bottomSheetState.update { it.copy(isVisible = false, initialDate = null) }
+        _bottomSheetState.update {
+            it.copy(
+                isVisible = false,
+                initialDate = null,
+                initialGroupId = null
+            )
+        }
     }
 
     val statistics: StateFlow<TodoStat> = combine(
@@ -661,43 +663,18 @@ class TodoViewModel(
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
-    private val _homeTodoLimit = MutableStateFlow(HOME_TODO_PAGE_SIZE)
-    private val _homeSortOption = MutableStateFlow(SortOption.DEFAULT)
-    private val _homeSortOrder = MutableStateFlow(SortOrder.DESCENDING)
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val homeTodos: StateFlow<HomeTodoListState> = combine(
+    val homeTodos: StateFlow<List<TodoItemWithSubTodos>> = combine(
+        allTodos,
         _searchQuery,
-        _homeSortOption,
-        _homeSortOrder,
-        _homeTodoLimit
-    ) { query, sortOption, sortOrder, limit ->
-        HomeTodoQuery(
-            searchQuery = query,
-            sortOption = sortOption,
-            sortOrder = sortOrder,
-            limit = limit
-        )
-    }.flatMapLatest { request ->
-        combine(
-            repository.getHomeTodos(
-                query = request.searchQuery,
-                sortOption = request.sortOption,
-                sortOrder = request.sortOrder,
-                limit = request.limit
-            ),
-            repository.getHomeTodoCount(request.searchQuery)
-        ) { todos, totalCount ->
-            HomeTodoListState(
-                todos = todos,
-                totalCount = totalCount,
-                loadedLimit = request.limit
-            )
-        }
+        _homeGroupFilter
+    ) { todos, query, groupFilter ->
+        val searchQuery = query.trim()
+        todos.filter { it.matchesHomeFilter(searchQuery, groupFilter) }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = HomeTodoListState()
+        initialValue = emptyList()
     )
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -710,25 +687,40 @@ class TodoViewModel(
         )
 
     fun updateSearchQuery(query: String) {
-        if (_searchQuery.value != query) {
-            _homeTodoLimit.value = HOME_TODO_PAGE_SIZE
-        }
         _searchQuery.value = query
     }
 
-    fun updateHomeSort(sortOption: SortOption, sortOrder: SortOrder) {
-        val isSortChanged = _homeSortOption.value != sortOption ||
-                _homeSortOrder.value != sortOrder
-        if (!isSortChanged) return
-
-        _homeSortOption.value = sortOption
-        _homeSortOrder.value = sortOrder
-        _homeTodoLimit.value = HOME_TODO_PAGE_SIZE
+    fun updateHomeGroupFilter(filter: HomeGroupFilter) {
+        if (_homeGroupFilter.value == filter) return
+        _homeGroupFilter.value = filter
+        clearSelections()
     }
 
-    fun loadNextHomeTodoPage() {
-        if (!homeTodos.value.hasMore) return
-        _homeTodoLimit.update { it + HOME_TODO_PAGE_SIZE }
+    fun createTodoGroup(name: String, color: Int = 0) = viewModelScope.launch {
+        repository.createTodoGroup(name, color)
+    }
+
+    fun updateTodoGroup(group: TodoGroup) = viewModelScope.launch {
+        repository.updateTodoGroup(group)
+    }
+
+    fun deleteTodoGroup(group: TodoGroup) = viewModelScope.launch {
+        repository.deleteTodoGroup(group)
+    }
+
+    private fun TodoItemWithSubTodos.matchesHomeFilter(
+        searchQuery: String,
+        groupFilter: HomeGroupFilter
+    ): Boolean {
+        val todo = todoItem
+        val matchesQuery = searchQuery.isEmpty() ||
+                todo.title.contains(searchQuery, ignoreCase = true)
+        val matchesGroup = when (groupFilter) {
+            HomeGroupFilter.All -> true
+            HomeGroupFilter.Ungrouped -> todo.groupId == null
+            is HomeGroupFilter.Group -> todo.groupId == groupFilter.id
+        }
+        return matchesQuery && matchesGroup
     }
 
     private fun List<TodoItem>.reminderTodoIds(): List<Int> {
