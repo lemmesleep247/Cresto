@@ -50,6 +50,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nevoit.cresto.R
 import com.nevoit.cresto.data.todo.HomeGroupFilter
@@ -429,7 +430,8 @@ fun BottomSheet(
 
     val bottomSheetShape = deviceCornerShape(
         bottomLeft = false,
-        bottomRight = false
+        bottomRight = false,
+        maxRadius = 36.dp
     )
 
     BackHandler {
@@ -668,6 +670,7 @@ fun BottomSheet(
                     selectedGroupId = when (filter) {
                         HomeGroupFilter.All,
                         HomeGroupFilter.Ungrouped -> null
+
                         is HomeGroupFilter.Group -> filter.id
                     }
                 },
