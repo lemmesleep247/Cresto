@@ -36,6 +36,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -85,6 +86,7 @@ import com.nevoit.cresto.ui.components.glasense.GlasenseMenuItem
 import com.nevoit.cresto.ui.components.glasense.glasenseHighlight
 import com.nevoit.cresto.ui.components.glasense.material.MaterialRecipes
 import com.nevoit.cresto.ui.components.glasense.material.rememberMaterialRenderEffectOrNull
+import com.nevoit.cresto.util.supportsRuntimeShaderEffect
 import com.nevoit.glasense.core.component.Icon
 import com.nevoit.glasense.core.component.Text
 import kotlinx.coroutines.launch
@@ -441,24 +443,25 @@ fun BoxScope.HomeTopAppBar(
                     }
                     alpha = searchBoxAlphaAnimation.value
                 }
-                .drawPlainBackdrop(
-                    backdrop = backdrop,
-                    shape = { Capsule() },
-                    effects = {
-                        padding = 32.dp.toPx() * 2
-                        materialEffect?.let { effect(it) }
-                        blur(
-                            radius = if (glass) 8.dp.toPx() else 32.dp.toPx(),
-                            edgeTreatment = TileMode.Decal
-                        )
-                        if (glass) lens(16f.dp.toPx(), 48f.dp.toPx())
-                    },
-                    onDrawSurface = {
-                        drawRect(
-                            cardBackground, alpha = 0.3f
-                        )
-                    }
-                )
+                .then(
+                    if (supportsRuntimeShaderEffect()) Modifier.drawPlainBackdrop(
+                        backdrop = backdrop,
+                        shape = { Capsule() },
+                        effects = {
+                            padding = 32.dp.toPx() * 2
+                            materialEffect?.let { effect(it) }
+                            blur(
+                                radius = if (glass) 8.dp.toPx() else 32.dp.toPx(),
+                                edgeTreatment = TileMode.Decal
+                            )
+                            if (glass) lens(16f.dp.toPx(), 48f.dp.toPx())
+                        },
+                        onDrawSurface = {
+                            drawRect(
+                                cardBackground, alpha = 0.3f
+                            )
+                        }
+                    ) else Modifier.clip(Capsule()))
         ) {
             if (!glass) {
                 Box(
@@ -486,7 +489,7 @@ fun BoxScope.HomeTopAppBar(
             Box(
                 modifier = Modifier
                     .graphicsLayer {
-                        alpha = 1 - alphaAni
+                        alpha = if (supportsRuntimeShaderEffect()) 1 - alphaAni else 1f
                     }
                     .background(color = AppColors.scrimNormal.compositeOver(AppColors.pageBackground))
                     .fillMaxSize()

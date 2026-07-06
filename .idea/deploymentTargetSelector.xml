@@ -48,7 +48,7 @@
       </SelectionState>
       <SelectionState runConfigName="main">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-07-06T09:54:30.893069100Z">
+        <DropdownSelection timestamp="2026-07-06T11:51:55.968853200Z">
           <Target type="DEFAULT_BOOT">
             <handle>
               <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\nevde\.android\avd\Pixel_6_Pro_2.avd" />

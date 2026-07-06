@@ -4,6 +4,7 @@ import android.app.Service
 import android.content.Intent
 import android.net.Uri
 import android.os.IBinder
+import androidx.core.content.IntentCompat
 import com.nevoit.cresto.R
 import com.nevoit.cresto.data.todo.TodoRepository
 import com.nevoit.cresto.data.todo.reminder.TodoAlarmScheduler
@@ -35,7 +36,9 @@ class ShareExtractService : Service() {
         }
 
         val sharedText = intent?.getStringExtra(EXTRA_SHARED_TEXT).orEmpty()
-        val imageUris = intent?.getParcelableArrayListExtra(EXTRA_IMAGE_URIS, Uri::class.java)
+        val imageUris = intent?.let {
+            IntentCompat.getParcelableArrayListExtra(it, EXTRA_IMAGE_URIS, Uri::class.java)
+        }
             .orEmpty()
 
         serviceScope.launch {

@@ -4,10 +4,19 @@ import android.app.StatusBarManager
 import android.content.ComponentName
 import android.content.Context
 import android.graphics.drawable.Icon
+import android.os.Build
+import androidx.annotation.RequiresApi
 import com.nevoit.cresto.R
 import com.nevoit.cresto.feature.screenextract.ExtractScreenTileService
 
 internal fun requestAddExtractScreenTile(context: Context) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+
+    requestAddExtractScreenTileApi33(context)
+}
+
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+private fun requestAddExtractScreenTileApi33(context: Context) {
     val statusBarManager = context.getSystemService(StatusBarManager::class.java) ?: return
     statusBarManager.requestAddTileService(
         ComponentName(context, ExtractScreenTileService::class.java),
