@@ -3,7 +3,6 @@ package com.nevoit.cresto.feature.settings
 
 // Import necessary libraries and components
 import androidx.activity.compose.LocalActivity
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -60,6 +59,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil3.compose.AsyncImage
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.shapes.RoundedRectangle
@@ -80,6 +80,7 @@ import com.nevoit.cresto.ui.components.glasense.isScrolledPast
 import com.nevoit.cresto.ui.components.packed.ColorModeSelector
 import com.nevoit.cresto.ui.components.packed.ConfigInfoHeader
 import com.nevoit.cresto.ui.components.packed.TopBarSpacer
+import com.nevoit.cresto.util.supportsRuntimeShaderEffect
 import com.nevoit.glasense.component.ListStack
 import com.nevoit.glasense.core.component.Icon
 import com.nevoit.glasense.core.component.Text
@@ -238,25 +239,27 @@ fun AppearanceScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                     Text(stringResource(R.string.use_dynamic_color_scheme))
                 }
             }
-            Section(
-                header = { stringResource(R.string.design) },
-                footer = { stringResource(R.string.enabling_lite_mode_will_disable_some_blur_effects) }) {
-                CustomSwitchRow(
-                    checked = isLiteMode,
-                    onCheckedChange = { settingsViewModel.onLiteModeChanged(it) }) {
-                    Text(stringResource(R.string.lite_mode))
+            if (supportsRuntimeShaderEffect()) {
+                Section(
+                    header = { stringResource(R.string.design) },
+                    footer = { stringResource(R.string.enabling_lite_mode_will_disable_some_blur_effects) }) {
+                    CustomSwitchRow(
+                        checked = isLiteMode,
+                        onCheckedChange = { settingsViewModel.onLiteModeChanged(it) }) {
+                        Text(stringResource(R.string.lite_mode))
+                    }
                 }
-            }
-            Section(topSpacing = 12.dp, footer = {
-                stringResource(
-                    R.string.enabling_liquid_glass_can_significantly_impact_performance
-                )
-            }) {
-                CustomSwitchRow(
-                    glass = true,
-                    checked = isLiquidGlass,
-                    onCheckedChange = { settingsViewModel.onLiquidGlassChanged(it) }) {
-                    Text(stringResource(R.string.liquid_glass))
+                Section(topSpacing = 12.dp, footer = {
+                    stringResource(
+                        R.string.enabling_liquid_glass_can_significantly_impact_performance
+                    )
+                }) {
+                    CustomSwitchRow(
+                        glass = true,
+                        checked = isLiquidGlass,
+                        onCheckedChange = { settingsViewModel.onLiquidGlassChanged(it) }) {
+                        Text(stringResource(R.string.liquid_glass))
+                    }
                 }
             }
             NoPaddingSection(header = { stringResource(R.string.app_icon) }) {
@@ -435,10 +438,11 @@ private fun AppIconOption(
                 .background(Color.White),
             contentAlignment = Alignment.Center
         ) {
-            Image(
-                painter = painterResource(icon.mipmapResId),
+            AsyncImage(
+                model = icon.mipmapResId,
                 contentDescription = stringResource(icon.displayNameResId),
-                modifier = Modifier.size(64.dp)
+                modifier = Modifier
+                    .size(64.dp)
             )
 
         }

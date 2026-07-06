@@ -60,15 +60,17 @@ import com.nevoit.cresto.R
 import com.nevoit.cresto.theme.AppButtonColors
 import com.nevoit.cresto.theme.AppSpecs
 import com.nevoit.cresto.theme.LocalGlasenseSettings
+import com.nevoit.cresto.toolkit.gaussiangradient.smoothGradientMask
 import com.nevoit.cresto.ui.components.glasense.GlasenseButtonAlt
 import com.nevoit.cresto.ui.components.glasense.GlasenseModalTopBar
 import com.nevoit.cresto.ui.components.glasense.glasenseHighlight
 import com.nevoit.cresto.ui.components.glasense.isScrolledPast
 import com.nevoit.cresto.ui.components.glasense.material.MaterialRecipes
-import com.nevoit.cresto.ui.components.glasense.material.rememberMaterialRenderEffect
+import com.nevoit.cresto.ui.components.glasense.material.rememberMaterialRenderEffectOrNull
 import com.nevoit.cresto.ui.components.packed.ConfigItemContainer
 import com.nevoit.cresto.ui.modifier.shaderRipple
 import com.nevoit.cresto.ui.modifier.tiltOnPress
+import com.nevoit.cresto.util.supportsRuntimeShaderEffect
 import com.nevoit.glasense.component.BottomSheet
 import com.nevoit.glasense.component.paddingItem
 import com.nevoit.glasense.core.component.HGap
@@ -348,13 +350,15 @@ private fun UpdateTopBar(
                 alpha = if (visible) 1f else 0f
             }
             .fillMaxWidth()
-            .drawPlainBackdrop(
-                backdrop = backdrop,
-                shape = { RectangleShape },
-                effects = {
-                    if (blur) blur(3f.dp.toPx())
-                    runtimeShaderEffect(
-                        "AlphaMask", """
+            .then(
+                if (supportsRuntimeShaderEffect()) Modifier.drawPlainBackdrop(
+                    backdrop = backdrop,
+                    shape = { RectangleShape },
+                    effects = {
+                        if (blur) blur(3f.dp.toPx())
+                        if (supportsRuntimeShaderEffect()) {
+                            runtimeShaderEffect(
+                                "AlphaMask", """
 uniform shader content;
 
 uniform float2 size;
@@ -366,15 +370,21 @@ float blurAlpha = smoothstep(size.y, size.y * 0.5, coord.y);
 float tintAlpha = smoothstep(size.y, size.y * 0.5, coord.y);
 return mix(content.eval(coord) * blurAlpha, tint * tintAlpha, tintIntensity);
 }""", "content"
-                    ) {
-                        apply {
-                            setFloatUniform("size", size.width, size.height)
-                            setColorUniform("tint", surfaceColor)
-                            setFloatUniform("tintIntensity", 0.7f)
+                            ) {
+                                apply {
+                                    setFloatUniform("size", size.width, size.height)
+                                    setColorUniform("tint", surfaceColor)
+                                    setFloatUniform("tintIntensity", 0.7f)
+                                }
+                            }
                         }
                     }
-                }
-            )
+                ) else Modifier.smoothGradientMask(
+                    color = surfaceColor,
+                    start = 1f,
+                    end = 0.5f,
+                    intensity = 0.7f
+                ))
             .padding(bottom = 32.dp + 48.dp)) {
     }
     GlasenseModalTopBar(
@@ -407,7 +417,7 @@ private fun BoxScope.UpdateActions(
     onLater: () -> Unit,
     onDownload: () -> Unit
 ) {
-    val effect = rememberMaterialRenderEffect(MaterialRecipes.thin())
+    val materialEffect = rememberMaterialRenderEffectOrNull(MaterialRecipes.thin())
     val blur = !LocalGlasenseSettings.current.liteMode
 
     Row(
@@ -422,7 +432,7 @@ private fun BoxScope.UpdateActions(
                         this.padding = 32.dp.toPx()
                         blur(32.dp.toPx())
                     }
-                    effect(effect)
+                    materialEffect?.let { effect(it) }
                 }
             )
             .navigationBarsPadding()

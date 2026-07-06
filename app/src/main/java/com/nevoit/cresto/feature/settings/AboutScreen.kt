@@ -37,8 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.paint
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
@@ -61,6 +60,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil3.compose.AsyncImage
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.shapes.Capsule
@@ -221,50 +221,47 @@ fun AboutScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                         .padding(horizontal = 12.dp)
                         .aspectRatio(3f / 4f)
                         .fillMaxWidth()
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .tiltOnPress(maxTilt = 10f) {
-                                aboutCardTapCount += 1
-                                if (aboutCardTapCount >= 10) {
-                                    aboutCardTapCount = 0
-                                    confettiBurstKey += 1
-                                    settingsViewModel.unlockEasterEgg()
-                                }
+                        .tiltOnPress(maxTilt = 10f) {
+                            aboutCardTapCount += 1
+                            if (aboutCardTapCount >= 10) {
+                                aboutCardTapCount = 0
+                                confettiBurstKey += 1
+                                settingsViewModel.unlockEasterEgg()
                             }
-                            .then(
-                                if (isSuperGraphicUltraModernGirlEnabled) {
-                                    Modifier
-                                        .pressIndentShaderEffect()
-                                } else {
-                                    Modifier
-                                }
+                        }
+                        .then(
+                            if (isSuperGraphicUltraModernGirlEnabled) {
+                                Modifier
+                                    .pressIndentShaderEffect()
+                            } else {
+                                Modifier
+                            }
+                        )
+                        .clip(shape)
+                        .shaderRipple()
+                        .drawWithContent {
+                            val outline = shape.createOutline(
+                                size = size,
+                                layoutDirection = LayoutDirection.Ltr,
+                                density = density
                             )
-                            .clip(shape)
-                            .shaderRipple()
-                            .paint(
-                                painter = if (darkMode) painterResource(R.drawable.about_background) else painterResource(
-                                    R.drawable.about_background_light
+                            drawContent()
+                            // Draw a white glowing border around the image
+                            drawOutline(
+                                outline = outline,
+                                style = Stroke(4.dp.toPx()),
+                                color = if (darkMode) Color.White.copy(.2f) else Color.Black.copy(
+                                    .05f
                                 ),
-                                contentScale = ContentScale.Crop
+                                blendMode = BlendMode.Luminosity
                             )
-                            .drawBehind {
-                                val outline = shape.createOutline(
-                                    size = size,
-                                    layoutDirection = LayoutDirection.Ltr,
-                                    density = density
-                                )
-                                // Draw a white glowing border around the image
-                                drawOutline(
-                                    outline = outline,
-                                    style = Stroke(4.dp.toPx()),
-                                    color = if (darkMode) Color.White.copy(.2f) else Color.Black.copy(
-                                        .05f
-                                    ),
-                                    blendMode = BlendMode.Luminosity
-                                )
-                            }
+                        }
+                ) {
+                    AsyncImage(
+                        model = if (darkMode) R.drawable.about_background else R.drawable.about_background_light,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
                     )
                 }
             }

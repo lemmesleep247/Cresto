@@ -84,7 +84,7 @@ import com.nevoit.cresto.ui.components.glasense.GlasenseDynamicSmallTitle
 import com.nevoit.cresto.ui.components.glasense.GlasenseMenuItem
 import com.nevoit.cresto.ui.components.glasense.glasenseHighlight
 import com.nevoit.cresto.ui.components.glasense.material.MaterialRecipes
-import com.nevoit.cresto.ui.components.glasense.material.rememberMaterialRenderEffect
+import com.nevoit.cresto.ui.components.glasense.material.rememberMaterialRenderEffectOrNull
 import com.nevoit.glasense.core.component.Icon
 import com.nevoit.glasense.core.component.Text
 import kotlinx.coroutines.launch
@@ -172,7 +172,7 @@ fun BoxScope.HomeTopAppBar(
     val searchBoxBlurAnimation =
         remember { Animatable(if (isSearchBoxOpen) 0f else targetBlurRadius) }
 
-    val material = rememberMaterialRenderEffect(MaterialRecipes.appBar())
+    val materialEffect = rememberMaterialRenderEffectOrNull(MaterialRecipes.appBar())
 
     val glass = LocalGlasenseSettings.current.liquidGlass
 
@@ -446,7 +446,7 @@ fun BoxScope.HomeTopAppBar(
                     shape = { Capsule() },
                     effects = {
                         padding = 32.dp.toPx() * 2
-                        effect(material)
+                        materialEffect?.let { effect(it) }
                         blur(
                             radius = if (glass) 8.dp.toPx() else 32.dp.toPx(),
                             edgeTreatment = TileMode.Decal

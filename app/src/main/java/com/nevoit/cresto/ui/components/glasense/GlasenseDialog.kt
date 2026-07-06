@@ -28,6 +28,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
@@ -60,7 +61,8 @@ import com.nevoit.cresto.theme.AppSpecs
 import com.nevoit.cresto.theme.LocalGlasenseSettings
 import com.nevoit.cresto.theme.isAppInDarkTheme
 import com.nevoit.cresto.ui.components.glasense.material.MaterialRecipes
-import com.nevoit.cresto.ui.components.glasense.material.rememberMaterialRenderEffect
+import com.nevoit.cresto.ui.components.glasense.material.rememberMaterialRenderEffectOrNull
+import com.nevoit.cresto.util.supportsRuntimeShaderEffect
 import com.nevoit.glasense.core.component.Icon
 import com.nevoit.glasense.core.component.Text
 import com.nevoit.glasense.theme.GlasenseTheme
@@ -163,7 +165,7 @@ fun GlasenseDialog(
     val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
 
-    val material = rememberMaterialRenderEffect(MaterialRecipes.regular())
+    val materialEffect = rememberMaterialRenderEffectOrNull(MaterialRecipes.regular())
 
     if (dialogState.isVisible) {
         var isReady by remember { mutableStateOf(true) }
@@ -251,39 +253,48 @@ fun GlasenseDialog(
                             }
                         }
                     }
-                    .drawBackdrop(
-                        backdrop = backdrop,
-                        shape = { dialogShape },
-                        effects = {
-                            if (blur && !liquidGlass) {
-                                padding = 32f.dp.toPx() * 2
-                                effect(material)
-                                blur(32f.dp.toPx(), TileMode.Mirror)
-                            } else if (blur) {
-                                padding = 16f.dp.toPx() * 2
-                                effect(material)
-                                blur(
-                                    16.dp.toPx(),
-                                    TileMode.Mirror
+                    .then(
+                        if (supportsRuntimeShaderEffect()) Modifier.drawBackdrop(
+                            backdrop = backdrop,
+                            shape = { dialogShape },
+                            effects = {
+                                if (blur && !liquidGlass) {
+                                    padding = 32f.dp.toPx() * 2
+                                    materialEffect?.let { effect(it) }
+                                    blur(32f.dp.toPx(), TileMode.Mirror)
+                                } else if (blur) {
+                                    padding = 16f.dp.toPx() * 2
+                                    materialEffect?.let { effect(it) }
+                                    blur(
+                                        16.dp.toPx(),
+                                        TileMode.Mirror
+                                    )
+                                    lens(24f.dp.toPx(), 48f.dp.toPx(), depthEffect = true)
+                                }
+                            },
+                            highlight = { if (liquidGlass) Highlight.Default else null },
+                            shadow = null,
+                            innerShadow = null,
+                            // Custom drawing on top of the blurred background to create stunning colors.
+                            onDrawSurface = {
+                                if (!blur) drawRect(
+                                    brush = SolidColor(surfaceColor),
+                                    style = Fill
                                 )
-                                lens(24f.dp.toPx(), 48f.dp.toPx(), depthEffect = true)
+                            },
+                            layerBlock = {
+                                scaleX = scaleAni.value
+                                scaleY = scaleAni.value
+                                alpha = alphaAni.value
+                            }) else Modifier
+                            .graphicsLayer {
+                                scaleX = scaleAni.value
+                                scaleY = scaleAni.value
+                                alpha = alphaAni.value
                             }
-                        },
-                        highlight = { if (liquidGlass) Highlight.Default else null },
-                        shadow = null,
-                        innerShadow = null,
-                        // Custom drawing on top of the blurred background to create stunning colors.
-                        onDrawSurface = {
-                            if (!blur) drawRect(
-                                brush = SolidColor(surfaceColor),
-                                style = Fill
-                            )
-                        },
-                        layerBlock = {
-                            scaleX = scaleAni.value
-                            scaleY = scaleAni.value
-                            alpha = alphaAni.value
-                        })
+                            .clip(dialogShape)
+                            .background(surfaceColor)
+                    )
                     .then(if (!liquidGlass) Modifier.glasenseHighlight(AppSpecs.dialogCorner) else Modifier)
 
             ) {

@@ -18,3 +18,6 @@ local.properties
 /gradle/gradle-daemon-jvm.properties
 /app/src/main/java/com/nevoit/cresto/secrets/
 /glasense-ui-demo/build/
+/glasense-ui-demo/release/output-metadata.json
+/glasense-ui-demo/release/baselineProfiles/0/glasense-ui-demo-release.dm
+/glasense-ui-demo/release/baselineProfiles/1/glasense-ui-demo-release.dm

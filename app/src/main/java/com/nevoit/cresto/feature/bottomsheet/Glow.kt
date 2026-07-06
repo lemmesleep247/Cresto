@@ -49,8 +49,9 @@ import com.nevoit.cresto.ui.components.glasense.RotatingGlow
 import com.nevoit.cresto.ui.components.glasense.RotatingGlowBorder
 import com.nevoit.cresto.ui.components.glasense.glasenseHighlight
 import com.nevoit.cresto.ui.components.glasense.material.MaterialRecipes
-import com.nevoit.cresto.ui.components.glasense.material.rememberMaterialRenderEffect
+import com.nevoit.cresto.ui.components.glasense.material.rememberMaterialRenderEffectOrNull
 import com.nevoit.cresto.ui.viewmodel.AiViewModel
+import com.nevoit.cresto.util.supportsRuntimeShaderEffect
 import com.nevoit.glasense.core.component.Icon
 import com.nevoit.glasense.core.component.Text
 import com.nevoit.glasense.core.modifier.cachedClip
@@ -70,7 +71,7 @@ fun GlowContainer(
         highlightColorsLight
     }
 
-    val material = rememberMaterialRenderEffect(MaterialRecipes.medium())
+    val materialEffect = rememberMaterialRenderEffectOrNull(MaterialRecipes.medium())
     Box(
         modifier = modifier,
         contentAlignment = Alignment.Center
@@ -106,13 +107,20 @@ fun GlowContainer(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        renderEffect = material
+                        renderEffect = materialEffect
                     },
                 blurRadius = 32.dp,
                 edgeTreatment = BlurredEdgeTreatment.Rectangle,
                 colors = glowColors,
                 timeMillis = 5000
             )
+            if (!supportsRuntimeShaderEffect()) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(color = GlasenseTheme.colors.cardBackground.copy(alpha = 0.5f))
+                )
+            }
             if (!LocalGlasenseSettings.current.liteMode) {
                 RotatingGlowBorder(
                     modifier = Modifier
