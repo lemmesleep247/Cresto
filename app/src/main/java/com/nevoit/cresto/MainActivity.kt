@@ -1,15 +1,13 @@
 package com.nevoit.cresto
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.core.content.ContextCompat
+import androidx.core.app.ActivityCompat
 import androidx.core.view.WindowCompat
 import com.nevoit.cresto.feature.guide.GuideActivity
 import com.nevoit.cresto.feature.main.MainScreen
@@ -17,13 +15,16 @@ import com.nevoit.cresto.feature.screenextract.ScreenExtractEvents
 import com.nevoit.cresto.feature.settings.util.SettingsManager
 import com.nevoit.cresto.theme.AppColors
 import com.nevoit.cresto.theme.GlasenseTheme
+import com.nevoit.cresto.util.NotificationPermissionCompat
 import com.nevoit.glasense.core.interaction.overscroll.rememberOffsetOverscrollFactory
 import com.nevoit.glasense.theme.LocalGlasenseContentColor
+
+private const val REQUEST_POST_NOTIFICATIONS = 1001
 
 /**
  * The main activity of the application.
  */
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // This makes the app display behind the system bars.
@@ -75,14 +76,18 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestNotificationPermissionIfNeeded() {
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
+        if (!NotificationPermissionCompat.shouldRequestPostNotificationsPermission()) {
             return
         }
 
-        requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)
+        if (NotificationPermissionCompat.hasPostNotificationsPermission(this)) {
+            return
+        }
+
+        ActivityCompat.requestPermissions(
+            this,
+            arrayOf(NotificationPermissionCompat.POST_NOTIFICATIONS),
+            REQUEST_POST_NOTIFICATIONS
+        )
     }
 }

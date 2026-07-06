@@ -1,9 +1,9 @@
 package com.nevoit.cresto.feature.detail
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.core.view.WindowCompat
@@ -15,7 +15,7 @@ import com.nevoit.glasense.core.interaction.overscroll.rememberOffsetOverscrollF
 import com.nevoit.glasense.theme.LocalGlasenseContentColor
 import org.koin.androidx.viewmodel.ext.android.viewModel
 
-class DetailActivity : ComponentActivity() {
+class DetailActivity : AppCompatActivity() {
 
     private val todoViewModel: TodoViewModel by viewModel()
 

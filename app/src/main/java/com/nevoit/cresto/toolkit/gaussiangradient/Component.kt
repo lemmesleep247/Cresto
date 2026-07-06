@@ -1,61 +1,99 @@
 package com.nevoit.cresto.toolkit.gaussiangradient
 
 import android.graphics.RuntimeShader
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.toColorLong
 
-/**
- * A Composable function that applies a smooth gradient mask to a Modifier.
- * This is achieved using a Gaussian color interpolation shader.
- *
- * @param startColor The starting color of the gradient.
- * @param endColor The ending color of the gradient.
- * @param center The center point of the Gaussian distribution.
- * @param sigma The standard deviation of the Gaussian distribution, controlling the smoothness of the gradient.
- * @param alpha The alpha transparency to apply to the drawn rect.
- * @return A Modifier with the gradient mask applied.
- */
 @Composable
 fun Modifier.smoothGradientMask(
-    startColor: Color,
-    endColor: Color,
-    center: Float,
-    sigma: Float,
-    alpha: Float
+    color: Color,
+    start: Float,
+    end: Float,
+    intensity: Float
+): Modifier =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        smoothGradientShaderMask(color, start, end, intensity)
+    } else {
+        smoothGradientBrushMask(color, start, end, intensity)
+    }
+
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+@Composable
+private fun Modifier.smoothGradientShaderMask(
+    color: Color,
+    start: Float,
+    end: Float,
+    intensity: Float
 ): Modifier {
-    val shader = remember { RuntimeShader(GAUSSIAN_COLOR_INTERPOLATION_SHADER) }
+    val shader = remember { RuntimeShader(GRADIENT_SHADER) }
     val brush = remember { ShaderBrush(shader) }
 
     // Apply the drawing logic behind the content of the composable.
     return this.drawBehind {
-        shader.setFloatUniform(
-            "startColor",
-            startColor.red,
-            startColor.green,
-            startColor.blue,
-            startColor.alpha
-        )
-        shader.setFloatUniform(
-            "endColor",
-            endColor.red,
-            endColor.green,
-            endColor.blue,
-            endColor.alpha
-        )
-        shader.setFloatUniform(
-            "iResolution",
-            this.size.width,
-            this.size.height
-        )
-
-        shader.setFloatUniform("center", center)
-        shader.setFloatUniform("sigma", sigma)
+        shader.setFloatUniform("size", size.width, size.height)
+        shader.setColorUniform("tint", color.toColorLong())
+        shader.setFloatUniform("tintIntensity", intensity)
+        shader.setFloatUniform("tintRange", start, end)
 
         // Draw a rectangle covering the entire drawing area with the shader brush.
-        drawRect(brush = brush, alpha = alpha)
+        drawRect(brush = brush)
     }
+}
+
+@Composable
+private fun Modifier.smoothGradientBrushMask(
+    color: Color,
+    start: Float,
+    end: Float,
+    intensity: Float
+): Modifier {
+    val colors = remember(color, start, end, intensity) {
+        smoothStepGradientColors(color, start, end, intensity)
+    }
+
+    return this.drawWithCache {
+        val brush = Brush.verticalGradient(
+            colors = colors,
+            startY = 0f,
+            endY = size.height
+        )
+
+        onDrawBehind {
+            drawRect(brush = brush)
+        }
+    }
+}
+
+private const val SmoothStepGradientSamples = 32
+
+private fun smoothStepGradientColors(
+    color: Color,
+    start: Float,
+    end: Float,
+    intensity: Float
+): List<Color> =
+    List(SmoothStepGradientSamples + 1) { index ->
+        val p = index / SmoothStepGradientSamples.toFloat()
+        val mask = smoothStep(start, end, p)
+        val alpha = (intensity * mask).coerceIn(0f, 1f)
+
+        color.copy(alpha = alpha)
+    }
+
+private fun smoothStep(edge0: Float, edge1: Float, x: Float): Float {
+    if (edge0 == edge1) {
+        return if (x < edge0) 0f else 1f
+    }
+
+    val t = ((x - edge0) / (edge1 - edge0)).coerceIn(0f, 1f)
+    return t * t * (3f - 2f * t)
 }

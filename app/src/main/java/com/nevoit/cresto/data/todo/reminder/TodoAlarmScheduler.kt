@@ -1,18 +1,16 @@
 package com.nevoit.cresto.data.todo.reminder
 
-import android.Manifest
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import com.nevoit.cresto.R
 import com.nevoit.cresto.data.todo.TodoItem
 import com.nevoit.cresto.data.todo.TodoReminderMode
 import com.nevoit.cresto.data.todo.reminderDateTime
 import com.nevoit.cresto.feature.detail.DetailActivity
+import com.nevoit.cresto.util.NotificationPermissionCompat
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -94,10 +92,7 @@ class TodoAlarmScheduler(
     }
 
     fun hasNotificationPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            appContext,
-            Manifest.permission.POST_NOTIFICATIONS
-        ) == PackageManager.PERMISSION_GRANTED
+        return NotificationPermissionCompat.canPostNotifications(appContext)
     }
 
     private fun createPendingIntent(todo: TodoItem): PendingIntent {

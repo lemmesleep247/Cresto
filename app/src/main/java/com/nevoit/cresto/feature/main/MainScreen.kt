@@ -404,10 +404,9 @@ fun MainScreen() {
                     .height(120.dp + navigationBarHeight)
                     .align(Alignment.BottomCenter)
                     .smoothGradientMask(
-                        surfaceColor.copy(alpha = 0f),
-                        surfaceColor.copy(alpha = 1f),
+                        surfaceColor,
                         0f,
-                        0.8f,
+                        0.5f,
                         0.7f
                     )
             ) {
