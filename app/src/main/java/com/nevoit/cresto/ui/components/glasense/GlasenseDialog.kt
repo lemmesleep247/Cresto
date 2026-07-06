@@ -54,6 +54,7 @@ import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.effect
 import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.highlight.Highlight
+import com.kyant.backdrop.highlight.HighlightStyle
 import com.nevoit.cresto.feature.settings.util.SettingsManager
 import com.nevoit.cresto.theme.AppButtonColors
 import com.nevoit.cresto.theme.AppColors
@@ -272,7 +273,13 @@ fun GlasenseDialog(
                                     lens(24f.dp.toPx(), 48f.dp.toPx(), depthEffect = true)
                                 }
                             },
-                            highlight = { if (liquidGlass) Highlight.Default else null },
+                            highlight = {
+                                if (liquidGlass) Highlight.Default.copy(
+                                    style = HighlightStyle.Default(
+                                        angle = 90f
+                                    )
+                                ) else null
+                            },
                             shadow = null,
                             innerShadow = null,
                             // Custom drawing on top of the blurred background to create stunning colors.

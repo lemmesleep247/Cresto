@@ -61,6 +61,7 @@ import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.highlight.Highlight
+import com.kyant.backdrop.highlight.HighlightStyle
 import com.kyant.shapes.Capsule
 import com.nevoit.cresto.R
 import com.nevoit.cresto.data.todo.TodoItem
@@ -455,7 +456,13 @@ fun MainScreen() {
                                     shape = { Capsule() },
                                     shadow = null,
                                     innerShadow = null,
-                                    highlight = { if (liquidGlass) Highlight.Default else null },
+                                    highlight = {
+                                        if (liquidGlass) Highlight.Default.copy(
+                                            style = HighlightStyle.Default(
+                                                angle = 90f
+                                            )
+                                        ) else null
+                                    },
                                     effects = {
                                         blur(
                                             if (liquidGlass) 8f.dp.toPx() else 32f.dp.toPx(),
@@ -486,7 +493,13 @@ fun MainScreen() {
                                     shape = { Capsule() },
                                     shadow = null,
                                     innerShadow = null,
-                                    highlight = { if (liquidGlass) Highlight.Default else null },
+                                    highlight = {
+                                        if (liquidGlass) Highlight.Default.copy(
+                                            style = HighlightStyle.Default(
+                                                angle = 90f
+                                            )
+                                        ) else null
+                                    },
                                     effects = {
                                         blur(
                                             if (liquidGlass) 8f.dp.toPx() else 32f.dp.toPx(),
@@ -590,7 +603,13 @@ fun MainScreen() {
                                     shape = { Capsule() },
                                     shadow = null,
                                     innerShadow = null,
-                                    highlight = { if (liquidGlass) Highlight.Default else null },
+                                    highlight = {
+                                        if (liquidGlass) Highlight.Default.copy(
+                                            style = HighlightStyle.Default(
+                                                angle = 90f
+                                            )
+                                        ) else null
+                                    },
                                     effects = {
                                         blur(
                                             if (liquidGlass) 8f.dp.toPx() else 32f.dp.toPx(),

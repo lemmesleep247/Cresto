@@ -72,6 +72,7 @@ import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.effect
 import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.highlight.Highlight
+import com.kyant.backdrop.highlight.HighlightStyle
 import com.kyant.shapes.Capsule
 import com.nevoit.cresto.R
 import com.nevoit.cresto.data.todo.TodoViewModel
@@ -478,7 +479,13 @@ fun BoxScope.HomeTopAppBar(
                             shape = { Capsule() },
                             shadow = null,
                             innerShadow = null,
-                            highlight = { Highlight.Default },
+                            highlight = {
+                                Highlight.Default.copy(
+                                    style = HighlightStyle.Default(
+                                        angle = 90f
+                                    )
+                                )
+                            },
                             effects = {
 
                             })
