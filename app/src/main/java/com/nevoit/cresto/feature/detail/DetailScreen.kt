@@ -922,6 +922,7 @@ fun DetailScreen(
                             viewModel.update(item.todoItem.copy(groupId = groupId))
                         },
                         onCreateGroup = { name -> viewModel.createTodoGroup(name) },
+                        onRenameGroup = viewModel::updateTodoGroup,
                         onDeleteGroup = viewModel::deleteTodoGroup,
                         onDismissed = { isGroupBottomSheetVisible = false },
                         showAllFilter = false,

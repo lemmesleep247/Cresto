@@ -627,7 +627,7 @@ fun MainScreen() {
             if (bottomSheetState.isVisible) {
                 BottomSheet(
                     onDismiss = { viewModel.hideBottomSheet() },
-                    onAddClick = { title, notes, flagIndex, finalDate, startTime, endTime, reminder, repeatFrequency, repeatRuleConfig ->
+                    onAddClick = { title, notes, flagIndex, finalDate, startTime, endTime, reminder, repeatFrequency, repeatRuleConfig, groupId ->
                         viewModel.insert(
                             TodoItem(
                                 title = title,
@@ -642,7 +642,7 @@ fun MainScreen() {
                                 reminderTime = reminder?.time,
                                 reminderPersistent = reminder?.persistent ?: false,
                                 reminderStrong = reminder?.strong ?: false,
-                                groupId = bottomSheetState.initialGroupId
+                                groupId = groupId
                             ),
                             repeatFrequency = repeatFrequency,
                             repeatRuleConfig = repeatRuleConfig
@@ -688,6 +688,7 @@ fun MainScreen() {
                     selectedFilter = selectedHomeGroupFilter,
                     onFilterSelected = viewModel::updateHomeGroupFilterFromSheet,
                     onCreateGroup = { name -> viewModel.createTodoGroup(name) },
+                    onRenameGroup = viewModel::updateTodoGroup,
                     onDeleteGroup = viewModel::deleteTodoGroup,
                     onDismissed = { isGroupBottomSheetVisible = false }
                 )

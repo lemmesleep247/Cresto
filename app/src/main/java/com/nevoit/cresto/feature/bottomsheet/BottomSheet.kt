@@ -52,9 +52,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Constraints
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nevoit.cresto.R
+import com.nevoit.cresto.data.todo.HomeGroupFilter
 import com.nevoit.cresto.data.todo.RepeatFrequency
 import com.nevoit.cresto.data.todo.RepeatRuleConfig
 import com.nevoit.cresto.data.todo.TodoViewModel
+import com.nevoit.cresto.feature.group.GroupBottomSheet
 import com.nevoit.cresto.feature.screenextract.AiExtractSource
 import com.nevoit.cresto.feature.screenextract.ScreenExtractEvents
 import com.nevoit.cresto.theme.AppColors
@@ -107,7 +109,7 @@ private fun defaultRangeEndTime(startTime: LocalTime): LocalTime {
 @Composable
 fun BottomSheet(
     onDismiss: () -> Unit,
-    onAddClick: (String, String, Int, LocalDate?, LocalTime?, LocalTime?, TodoReminderConfig?, RepeatFrequency?, RepeatRuleConfig?) -> Unit,
+    onAddClick: (String, String, Int, LocalDate?, LocalTime?, LocalTime?, TodoReminderConfig?, RepeatFrequency?, RepeatRuleConfig?, Int?) -> Unit,
     aiViewModel: AiViewModel = viewModel(),
     showDialog: (items: List<DialogItemData>, title: String, message: String?) -> Unit,
     showMenu: (anchorBounds: Rect, items: List<GlasenseMenuItem>) -> Unit,
@@ -149,11 +151,29 @@ fun BottomSheet(
     val viewModel: TodoViewModel = koinViewModel()
 
     val bottomSheetUiState by viewModel.bottomSheetState.collectAsState()
+    val homeGroups by viewModel.homeGroups.collectAsState()
+    val homeGroupTodoCounts by viewModel.homeGroupTodoCounts.collectAsState()
 
     var finalDate by remember {
         mutableStateOf<LocalDate?>(
             bottomSheetUiState.initialDate ?: LocalDate.now()
         )
+    }
+    var selectedGroupId by remember(bottomSheetUiState.initialGroupId) {
+        mutableStateOf(bottomSheetUiState.initialGroupId)
+    }
+    val ungroupedTodosText = stringResource(R.string.ungrouped_todos)
+    val selectedGroupText = remember(homeGroups, selectedGroupId, ungroupedTodosText) {
+        selectedGroupId
+            ?.let { id -> homeGroups.firstOrNull { it.id == id }?.name }
+            ?: ungroupedTodosText
+    }
+
+    LaunchedEffect(homeGroups, selectedGroupId) {
+        val groupId = selectedGroupId ?: return@LaunchedEffect
+        if (homeGroups.none { it.id == groupId }) {
+            selectedGroupId = null
+        }
     }
 
     val errorDialogItems = listOf(
@@ -270,6 +290,7 @@ fun BottomSheet(
     var repeatFrequency by remember { mutableStateOf<RepeatFrequency?>(null) }
     var customRepeatConfig by remember { mutableStateOf<CustomRepeatConfig?>(null) }
     var isCustomRepeatBottomSheetVisible by remember { mutableStateOf(false) }
+    var isGroupBottomSheetVisible by remember { mutableStateOf(false) }
 
     fun closeAiInput() {
         targetAiInputVisible = false
@@ -508,7 +529,8 @@ fun BottomSheet(
                                 endTime,
                                 reminder,
                                 repeatFrequency,
-                                customRepeatConfig?.toRepeatRuleConfig()
+                                customRepeatConfig?.toRepeatRuleConfig(),
+                                selectedGroupId
                             )
                         }
                     }, onClose = {
@@ -578,6 +600,10 @@ fun BottomSheet(
                                 isAllDayEnabled = false
                             }
                         },
+                        selectedGroupText = selectedGroupText,
+                        onOpenGroupBottomSheet = {
+                            isGroupBottomSheetVisible = true
+                        },
                         reminderConfig = reminderConfig,
                         onReminderConfigChange = { reminderConfig = it },
                         reminderPersistent = reminderPersistent,
@@ -628,6 +654,31 @@ fun BottomSheet(
                 onDismissed = {
                     isCustomRepeatBottomSheetVisible = false
                 }
+            )
+        }
+
+        if (isGroupBottomSheetVisible) {
+            GroupBottomSheet(
+                groups = homeGroups,
+                groupTodoCounts = homeGroupTodoCounts,
+                selectedFilter = selectedGroupId
+                    ?.let { HomeGroupFilter.Group(it) }
+                    ?: HomeGroupFilter.Ungrouped,
+                onFilterSelected = { filter ->
+                    selectedGroupId = when (filter) {
+                        HomeGroupFilter.All,
+                        HomeGroupFilter.Ungrouped -> null
+                        is HomeGroupFilter.Group -> filter.id
+                    }
+                },
+                onCreateGroup = { name -> viewModel.createTodoGroup(name) },
+                onRenameGroup = viewModel::updateTodoGroup,
+                onDeleteGroup = viewModel::deleteTodoGroup,
+                onDismissed = {
+                    isGroupBottomSheetVisible = false
+                },
+                showAllFilter = false,
+                showRecentlyDeleted = false
             )
         }
     }

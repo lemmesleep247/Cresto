@@ -62,6 +62,7 @@ import com.nevoit.glasense.component.ListRowAccessory
 import com.nevoit.glasense.component.ListStack
 import com.nevoit.glasense.core.component.Icon
 import com.nevoit.glasense.core.component.Text
+import com.nevoit.glasense.core.component.VDivider
 import com.nevoit.glasense.core.component.VGap
 import com.nevoit.glasense.core.interaction.DimIndication
 import com.nevoit.glasense.theme.GlasenseTheme
@@ -85,6 +86,8 @@ fun AdvancedPage(
     onAllDayEnabledChange: (Boolean) -> Unit,
     onRangeStartTimeChange: (LocalTime?) -> Unit,
     onRangeEndTimeChange: (LocalTime?) -> Unit,
+    selectedGroupText: String,
+    onOpenGroupBottomSheet: () -> Unit,
     reminderConfig: TodoReminderConfig?,
     onReminderConfigChange: (TodoReminderConfig?) -> Unit,
     reminderPersistent: Boolean,
@@ -440,6 +443,52 @@ fun AdvancedPage(
                                 Text(
                                     text = finalDate?.format(DateTimeFormatter.ofPattern("yyyy/M/d"))
                                         ?: stringResource(R.string.none),
+                                    fontWeight = FontWeight.Normal,
+                                    modifier = Modifier.padding(
+                                        horizontal = 8.dp,
+                                        vertical = 4.dp
+                                    ),
+                                    color = AppColors.content
+                                )
+                            }
+                        }
+                        VDivider()
+                        Row(
+                            modifier = Modifier.padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                painter =
+                                    painterResource(id = R.drawable.ic_folder),
+                                contentDescription = stringResource(R.string.group),
+                                modifier = Modifier
+                                    .padding(end = 8.dp)
+                                    .width(28.dp)
+                            )
+                            Text(
+                                text = stringResource(R.string.group),
+                                fontWeight = FontWeight.Normal,
+                                modifier = Modifier
+                                    .align(Alignment.CenterVertically)
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.CenterVertically)
+                                    .wrapContentSize()
+                                    .clip(Capsule())
+                                    .background(
+                                        color = AppColors.scrimNormal
+                                    )
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = DimIndication()
+                                    ) {
+                                        onOpenGroupBottomSheet()
+                                    }
+                            ) {
+                                Text(
+                                    text = selectedGroupText,
                                     fontWeight = FontWeight.Normal,
                                     modifier = Modifier.padding(
                                         horizontal = 8.dp,

@@ -78,10 +78,13 @@ class TodoRepository(
         throw IllegalStateException("Unable to create todo group")
     }
 
-    suspend fun updateTodoGroup(group: TodoGroup) {
+    suspend fun updateTodoGroup(group: TodoGroup) = todoDatabase.withTransaction {
         val normalizedName = group.name.trim()
         require(normalizedName.isNotEmpty()) { "Group name must not be blank" }
-        todoDao.updateTodoGroup(group.copy(name = normalizedName))
+        val usedNames = todoDao.getAllTodoGroupsSnapshot()
+            .filter { it.id != group.id }
+            .mapTo(mutableSetOf()) { it.name }
+        todoDao.updateTodoGroup(group.copy(name = resolveTodoGroupName(normalizedName, usedNames)))
     }
 
     suspend fun deleteTodoGroup(group: TodoGroup) {

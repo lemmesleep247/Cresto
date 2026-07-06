@@ -70,7 +70,6 @@ import com.nevoit.cresto.theme.LocalGlasenseSettings
 import com.nevoit.cresto.theme.isAppInDarkTheme
 import com.nevoit.cresto.ui.components.glasense.material.MaterialRecipes
 import com.nevoit.cresto.ui.components.glasense.material.rememberMaterialRenderEffect
-import com.nevoit.cresto.util.DeviceInfo
 import com.nevoit.glasense.core.component.Icon
 import com.nevoit.glasense.core.component.Text
 import com.nevoit.glasense.core.component.VDivider
@@ -389,8 +388,6 @@ fun CustomMenuContent(items: List<GlasenseMenuItem>, onDismiss: () -> Unit) {
     val darkTheme = isAppInDarkTheme()
     // Define divider color based on the current theme.
     val dividerColor = if (darkTheme) Color.White.copy(.1f) else Color.Black.copy(.1f)
-    val blendMode =
-        if (DeviceInfo.isMediaTekDevice) BlendMode.SrcOver else BlendMode.Luminosity // Otherwise there'll be black blocks on MediaTek devices
 
     Column {
         items.forEachIndexed { index, item ->
@@ -412,7 +409,7 @@ fun CustomMenuContent(items: List<GlasenseMenuItem>, onDismiss: () -> Unit) {
                             modifier = Modifier.padding(horizontal = 1.5.dp),
                             color = dividerColor,
                             width = 1.dp,
-                            blendMode = blendMode
+                            blendMode = BlendMode.SrcOver
                         )
                     }
                 }
@@ -421,8 +418,7 @@ fun CustomMenuContent(items: List<GlasenseMenuItem>, onDismiss: () -> Unit) {
                     Spacer(
                         modifier = Modifier
                             .graphicsLayer {
-                                this.blendMode =
-                                    blendMode
+                                blendMode = BlendMode.SrcOver
                                 alpha = 0.5f
                             }
                             .fillMaxWidth()
@@ -447,7 +443,7 @@ fun CustomMenuContent(items: List<GlasenseMenuItem>, onDismiss: () -> Unit) {
                             modifier = Modifier.padding(horizontal = 1.5.dp),
                             color = dividerColor,
                             width = 1.dp,
-                            blendMode = blendMode
+                            blendMode = BlendMode.SrcOver
                         )
                     }
                 }
