@@ -31,7 +31,7 @@ android {
 
     defaultConfig {
         applicationId = "com.nevoit.cresto"
-        minSdk = 33
+        minSdk = 31
         targetSdk = 37
         versionCode = vCodeProvider.get()
         versionName = vNameProvider.get()
