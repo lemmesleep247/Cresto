@@ -90,6 +90,15 @@ fun GroupBottomSheet(
     val swipeableListState = rememberSwipeableListState()
     val actions = persistentListOf(
         SwipeableActionButton(
+            index = 1,
+            color = AppColors.primary,
+            iconColor = AppColors.onPrimary,
+            icon = painterResource(R.drawable.ic_square_and_pencil),
+            contentDescription = stringResource(R.string.rename),
+            isDestructive = false,
+            triggerOnDeepSwipe = false
+        ),
+        SwipeableActionButton(
             index = 0,
             color = AppColors.error,
             iconColor = AppColors.onError,
