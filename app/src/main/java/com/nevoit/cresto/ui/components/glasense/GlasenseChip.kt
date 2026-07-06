@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -54,7 +55,8 @@ fun <T> GlasenseChipGroup(
     items: List<T>,
     selectedItem: T,
     itemLabel: (T) -> String = { it.toString() },
-    onItemSelected: (T) -> Unit
+    onItemSelected: (T) -> Unit,
+    contentPadding: PaddingValues = PaddingValues()
 ) {
     val overscrollFactory = rememberOffsetOverscrollFactory()
     val chipMinHeight = rememberChipMinHeight()
@@ -66,7 +68,8 @@ fun <T> GlasenseChipGroup(
             modifier = modifier.fillMaxWidth(),
             state = state,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            contentPadding = contentPadding
         ) {
             items(items) { item ->
                 val isSelected = item == selectedItem

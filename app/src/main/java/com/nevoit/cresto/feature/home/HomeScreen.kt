@@ -9,11 +9,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -212,7 +214,8 @@ fun BoxScope.HomeScreen(
     PageContent(
         state = lazyListState,
         modifier = Modifier.layerBackdrop(backdrop),
-        tabPadding = true
+        tabPadding = true,
+        horizontalPadding = false
     ) {
         if (isSearchBoxOpen) {
             item(key = "top_padding") {
@@ -226,7 +229,9 @@ fun BoxScope.HomeScreen(
         } else {
             item(key = "title") {
                 GlasensePageHeader(
-                    modifier = Modifier.animateItem(placementSpec = Springs.crisp()),
+                    modifier = Modifier
+                        .animateItem(placementSpec = Springs.crisp())
+                        .padding(horizontal = 12.dp),
                     title = allTodosTitle
                 )
             }
@@ -239,6 +244,7 @@ fun BoxScope.HomeScreen(
                     .animateItem(placementSpec = Springs.crisp()),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                HGap(12.dp)
                 FolderChipButton(onClick = onOpenGroupBottomSheet)
                 HGap(8.dp)
                 GlasenseChipGroup(
@@ -252,7 +258,8 @@ fun BoxScope.HomeScreen(
                             is HomeGroupFilter.Group -> homeGroupNames[filter.id] ?: allFilterTitle
                         }
                     },
-                    onItemSelected = viewModel::updateHomeGroupFilter
+                    onItemSelected = viewModel::updateHomeGroupFilter,
+                    contentPadding = PaddingValues(end = 12.dp)
                 )
             }
             VGap()
@@ -278,6 +285,7 @@ fun BoxScope.HomeScreen(
 
 
             TodoListItemRow(
+                modifier = Modifier.padding(horizontal = 12.dp),
                 item = displayItem,
                 isDueTodayMarkerEnabled = isDueTodayMarkerEnabled,
                 isOverdueMarkerEnabled = isOverdueMarkerEnabled,
@@ -361,6 +369,7 @@ fun BoxScope.HomeScreen(
                     key = { _, item -> item.todoItem.id },
                 ) { index, item ->
                     TodoListItemRow(
+                        modifier = Modifier.padding(horizontal = 12.dp),
                         item = item,
                         isDueTodayMarkerEnabled = isDueTodayMarkerEnabled,
                         isOverdueMarkerEnabled = isOverdueMarkerEnabled,
