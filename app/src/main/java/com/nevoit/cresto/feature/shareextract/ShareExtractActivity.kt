@@ -1,14 +1,15 @@
 package com.nevoit.cresto.feature.shareextract
 
-import android.app.Activity
 import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.IntentCompat
 import com.nevoit.cresto.R
 
-class ShareExtractActivity : Activity() {
+class ShareExtractActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -56,8 +57,16 @@ class ShareExtractActivity : Activity() {
 
     private fun Intent.extractImageUris(): List<Uri> {
         val uris = buildList {
-            getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)?.let(::add)
-            getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)?.let(::addAll)
+            IntentCompat.getParcelableExtra(
+                this@extractImageUris,
+                Intent.EXTRA_STREAM,
+                Uri::class.java
+            )?.let(::add)
+            IntentCompat.getParcelableArrayListExtra(
+                this@extractImageUris,
+                Intent.EXTRA_STREAM,
+                Uri::class.java
+            )?.let(::addAll)
 
             val clip = clipData
             if (clip != null) {

@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -39,7 +40,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
@@ -77,6 +80,7 @@ fun GroupBottomSheet(
     selectedFilter: HomeGroupFilter,
     onFilterSelected: (HomeGroupFilter) -> Unit,
     onCreateGroup: (String) -> Unit,
+    onRenameGroup: (TodoGroup) -> Unit,
     onDeleteGroup: (TodoGroup) -> Unit,
     onDismissed: () -> Unit,
     showAllFilter: Boolean = true,
@@ -88,7 +92,18 @@ fun GroupBottomSheet(
     val contentVariant = AppColors.contentVariant
     val navigationBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val swipeableListState = rememberSwipeableListState()
+    var editingGroupId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var editingName by rememberSaveable { mutableStateOf("") }
     val actions = persistentListOf(
+        SwipeableActionButton(
+            index = 1,
+            color = AppColors.primary,
+            iconColor = AppColors.onPrimary,
+            icon = painterResource(R.drawable.ic_square_and_pencil),
+            contentDescription = stringResource(R.string.rename),
+            isDestructive = false,
+            triggerOnDeepSwipe = false
+        ),
         SwipeableActionButton(
             index = 0,
             color = AppColors.error,
@@ -99,6 +114,47 @@ fun GroupBottomSheet(
             triggerOnDeepSwipe = true
         )
     )
+
+    LaunchedEffect(groups, editingGroupId) {
+        val groupId = editingGroupId ?: return@LaunchedEffect
+        if (groups.none { it.id == groupId }) {
+            editingGroupId = null
+            editingName = ""
+        }
+    }
+
+    fun cancelRename(groupId: Int? = null) {
+        if (groupId == null || editingGroupId == groupId) {
+            editingGroupId = null
+            editingName = ""
+        }
+    }
+
+    fun submitRename(group: TodoGroup, name: String) {
+        if (editingGroupId != group.id) return
+        val normalizedName = name.trim()
+        if (normalizedName.isNotEmpty() && normalizedName != group.name) {
+            onRenameGroup(group.copy(name = normalizedName))
+        }
+        cancelRename(group.id)
+    }
+
+    fun submitCurrentRenameBeforeSwitch(nextGroupId: Int) {
+        val currentGroupId = editingGroupId ?: return
+        if (currentGroupId == nextGroupId) return
+
+        val currentGroup = groups.firstOrNull { it.id == currentGroupId } ?: return
+        val normalizedName = editingName.trim()
+        if (normalizedName.isNotEmpty() && normalizedName != currentGroup.name) {
+            onRenameGroup(currentGroup.copy(name = normalizedName))
+        }
+    }
+
+    fun startRename(group: TodoGroup) {
+        submitCurrentRenameBeforeSwitch(group.id)
+        editingGroupId = group.id
+        editingName = group.name
+    }
 
     BottomSheet(
         onDismissed = onDismissed
@@ -169,15 +225,29 @@ fun GroupBottomSheet(
             }
             groups.forEach { group ->
                 item(key = "group_${group.id}") {
+                    val isEditing = editingGroupId == group.id
                     GroupRow(
                         swipeableState = swipeableListState,
                         actions = actions,
                         modifier = Modifier.animateItem(placementSpec = Springs.crisp()),
+                        key = group.id,
                         title = group.name,
+                        editing = isEditing,
+                        editingName = if (isEditing) editingName else group.name,
+                        onEditingNameChange = { editingName = it },
                         trailingText = (groupTodoCounts[group.id] ?: 0).toString(),
                         selected = selectedFilter == HomeGroupFilter.Group(group.id),
                         onClick = {
                             selectFilter(HomeGroupFilter.Group(group.id))
+                        },
+                        onRename = {
+                            startRename(group)
+                        },
+                        onSubmitRename = { name ->
+                            submitRename(group, name)
+                        },
+                        onCancelRename = {
+                            cancelRename(group.id)
                         },
                         onDelete = {
                             onDeleteGroup(group)
@@ -277,11 +347,18 @@ fun ListScope.GroupRow(
     modifier: Modifier = Modifier,
     swipeableState: SwipeableListState,
     actions: ImmutableList<SwipeableActionButton>,
+    key: Any,
     title: String,
+    editing: Boolean = false,
+    editingName: String = title,
+    onEditingNameChange: (String) -> Unit = {},
     trailingText: String? = null,
     iconType: FolderRowIconType = FolderRowIconType.FOLDER,
     selected: Boolean = false,
     onClick: () -> Unit,
+    onRename: () -> Unit,
+    onSubmitRename: (String) -> Unit,
+    onCancelRename: () -> Unit,
     onDelete: () -> Unit
 ) {
     val selectedBackground = AppColors.elevatedCardBackground
@@ -296,8 +373,42 @@ fun ListScope.GroupRow(
         )
     }
 
+    val focusRequester = remember { FocusRequester() }
+    var renameFieldHasFocus by remember(key, editing) { mutableStateOf(false) }
+    var editingFieldValue by remember(key) {
+        mutableStateOf(
+            TextFieldValue(
+                text = editingName,
+                selection = TextRange(editingName.length)
+            )
+        )
+    }
+    val inputTextStyle = GlasenseTheme.type.body
+    val textMeasurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val inputHeight = remember(textMeasurer, inputTextStyle, density) {
+        val measuredHeight = textMeasurer.measure(
+            text = AnnotatedString("Hg"),
+            style = inputTextStyle,
+            maxLines = 1
+        ).size.height
+
+        with(density) { measuredHeight.toDp() }
+    }
+
+    LaunchedEffect(editing) {
+        if (editing) {
+            editingFieldValue = TextFieldValue(
+                text = editingName,
+                selection = TextRange(editingName.length)
+            )
+            renameFieldHasFocus = false
+            focusRequester.requestFocus()
+        }
+    }
+
     GlasenseSwipeable(
-        key = title,
+        key = key,
         modifier = modifier
             .padding(horizontal = horizontalPadding)
             .fillMaxWidth(),
@@ -306,6 +417,7 @@ fun ListScope.GroupRow(
         onAction = { index ->
             when (index) {
                 0 -> onDelete()
+                1 -> onRename()
             }
         },
     ) {
@@ -314,7 +426,13 @@ fun ListScope.GroupRow(
                 .fillMaxWidth()
                 .clip(AppSpecs.cardShape)
                 .background(backgroundColor.value)
-                .clickable(onClick = onClick)
+                .clickable(onClick = {
+                    if (editing) {
+                        focusRequester.requestFocus()
+                    } else {
+                        onClick()
+                    }
+                })
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -333,12 +451,55 @@ fun ListScope.GroupRow(
                     .padding(end = 12.dp)
                     .size(24.dp)
             )
-            Text(
-                text = title,
-                style = GlasenseTheme.type.body,
-                modifier = Modifier.weight(1f)
-            )
-            if (trailingText?.isNotBlank() == true) {
+            if (editing) {
+                BasicTextField(
+                    value = editingFieldValue,
+                    onValueChange = { value ->
+                        editingFieldValue = value
+                        onEditingNameChange(value.text)
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .fixedHeightCenterVertically(inputHeight)
+                        .focusRequester(focusRequester)
+                        .onFocusChanged { focusState ->
+                            if (focusState.isFocused) {
+                                renameFieldHasFocus = true
+                            } else if (renameFieldHasFocus) {
+                                onSubmitRename(editingFieldValue.text)
+                            }
+                        }
+                        .onPreviewKeyEvent { event ->
+                            when (event.key) {
+                                Key.Enter -> {
+                                    if (event.type == KeyEventType.KeyUp) {
+                                        onSubmitRename(editingFieldValue.text)
+                                    }
+                                    true
+                                }
+                                Key.Escape -> {
+                                    if (event.type == KeyEventType.KeyUp) {
+                                        onCancelRename()
+                                    }
+                                    true
+                                }
+                                else -> false
+                            }
+                        },
+                    textStyle = inputTextStyle.copy(color = AppColors.content),
+                    cursorBrush = SolidColor(AppColors.primary),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { onSubmitRename(editingFieldValue.text) }),
+                    singleLine = true
+                )
+            } else {
+                Text(
+                    text = title,
+                    style = GlasenseTheme.type.body,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            if (!editing && trailingText?.isNotBlank() == true) {
                 HGap()
                 Text(
                     text = trailingText,

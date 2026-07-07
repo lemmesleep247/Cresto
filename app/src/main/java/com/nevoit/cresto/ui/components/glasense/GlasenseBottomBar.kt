@@ -15,9 +15,11 @@ import com.kyant.backdrop.drawPlainBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.runtimeShaderEffect
 import com.nevoit.cresto.theme.LocalGlasenseSettings
+import com.nevoit.cresto.toolkit.gaussiangradient.smoothGradientMask
 import com.nevoit.cresto.ui.components.CustomAnimatedVisibility
 import com.nevoit.cresto.ui.components.myFadeIn
 import com.nevoit.cresto.ui.components.myFadeOut
+import com.nevoit.cresto.util.supportsRuntimeShaderEffect
 
 
 /**
@@ -62,13 +64,14 @@ fun GlasenseBottomBar(
                     .height(navigationBarHeight + height)
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
-                    .drawPlainBackdrop(
-                        backdrop = backdrop,
-                        shape = { RectangleShape },
-                        effects = {
-                            if (blur) blur(3f.dp.toPx())
-                            runtimeShaderEffect(
-                                "AlphaMask", """
+                    .then(
+                        if (supportsRuntimeShaderEffect()) Modifier.drawPlainBackdrop(
+                            backdrop = backdrop,
+                            shape = { RectangleShape },
+                            effects = {
+                                if (blur) blur(3f.dp.toPx())
+                                runtimeShaderEffect(
+                                    "AlphaMask", """
 uniform shader content;
 
 uniform float2 size;
@@ -81,15 +84,20 @@ float blurAlpha = smoothstep(size.y, size.y * 0.4, invertedY);
 float tintAlpha = smoothstep(size.y, size.y * 0.4, invertedY);
 return mix(content.eval(coord) * blurAlpha, tint * tintAlpha, tintIntensity);
 }""", "content"
-                            ) {
-                                apply {
-                                    setFloatUniform("size", size.width, size.height)
-                                    setColorUniform("tint", surfaceColor)
-                                    setFloatUniform("tintIntensity", 0.7f)
+                                ) {
+                                    apply {
+                                        setFloatUniform("size", size.width, size.height)
+                                        setColorUniform("tint", surfaceColor)
+                                        setFloatUniform("tintIntensity", 0.7f)
+                                    }
                                 }
                             }
-                        }
-                    )
+                        ) else Modifier.smoothGradientMask(
+                            color = surfaceColor,
+                            intensity = 0.7f,
+                            start = 0f,
+                            end = 0.4f
+                        ))
             ) {}
         }
         // The primary content of the screen.

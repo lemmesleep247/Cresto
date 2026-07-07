@@ -27,6 +27,8 @@ import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.runtimeShaderEffect
 import com.nevoit.cresto.theme.AppColors
 import com.nevoit.cresto.theme.LocalGlasenseSettings
+import com.nevoit.cresto.toolkit.gaussiangradient.smoothGradientMask
+import com.nevoit.cresto.util.supportsRuntimeShaderEffect
 import com.nevoit.glasense.core.component.Text
 import com.nevoit.glasense.theme.GlasenseTheme
 import com.nevoit.glasense.theme.tokens.Springs
@@ -75,13 +77,14 @@ fun GlasenseDynamicSmallTitle(
             }
             .height(48.dp + statusBarHeight + 48.dp)
             .fillMaxWidth()
-            .drawPlainBackdrop(
-                backdrop = backdrop,
-                shape = { RectangleShape },
-                effects = {
-                    if (blur) blur(3f.dp.toPx())
-                    runtimeShaderEffect(
-                        "AlphaMask", """
+            .then(
+                if (supportsRuntimeShaderEffect()) Modifier.drawPlainBackdrop(
+                    backdrop = backdrop,
+                    shape = { RectangleShape },
+                    effects = {
+                        if (blur) blur(3f.dp.toPx())
+                        runtimeShaderEffect(
+                            "AlphaMask", """
 uniform shader content;
 
 uniform float2 size;
@@ -93,15 +96,15 @@ float blurAlpha = smoothstep(size.y, size.y * 0.7, coord.y);
 float tintAlpha = smoothstep(size.y, size.y * 0.6, coord.y);
 return mix(content.eval(coord) * blurAlpha, tint * tintAlpha, tintIntensity);
 }""", "content"
-                    ) {
-                        apply {
-                            setFloatUniform("size", size.width, size.height)
-                            setColorUniform("tint", surfaceColor)
-                            setFloatUniform("tintIntensity", 0.7f)
+                        ) {
+                            apply {
+                                setFloatUniform("size", size.width, size.height)
+                                setColorUniform("tint", surfaceColor)
+                                setFloatUniform("tintIntensity", 0.7f)
+                            }
                         }
                     }
-                }
-            )
+                ) else Modifier.smoothGradientMask(surfaceColor, 1f, 0.6f, 0.7f))
     ) {}
     Box(
         modifier = modifier

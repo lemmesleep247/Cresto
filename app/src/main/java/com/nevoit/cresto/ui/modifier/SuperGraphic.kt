@@ -23,6 +23,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.nevoit.cresto.util.supportsRuntimeShaderEffect
 import com.nevoit.glasense.theme.tokens.Springs
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -161,92 +162,104 @@ fun Modifier.pressIndentShaderEffect(
     radiusDp: Float = 300f,
     maxDepth: Float = 0.3f,
     chromaticStrength: Float = 0.5f
-): Modifier = composed {
-    val density = LocalDensity.current
-    val scope = rememberCoroutineScope()
-    val shader = remember { RuntimeShader(PRESS_INDENT_SHADER) }
-    val progress = remember { Animatable(0f) }
-    var pressAnimationJob by remember { mutableStateOf<Job?>(null) }
-    var releaseAnimationJob by remember { mutableStateOf<Job?>(null) }
+): Modifier = if (supportsRuntimeShaderEffect()) {
+    composed {
+        val density = LocalDensity.current
+        val scope = rememberCoroutineScope()
+        val shader = remember { RuntimeShader(PRESS_INDENT_SHADER) }
+        val progress = remember { Animatable(0f) }
+        var pressAnimationJob by remember { mutableStateOf<Job?>(null) }
+        var releaseAnimationJob by remember { mutableStateOf<Job?>(null) }
 
-    var size by remember { mutableStateOf(IntSize.Zero) }
-    var touch by remember { mutableStateOf(Offset.Unspecified) }
+        var size by remember { mutableStateOf(IntSize.Zero) }
+        var touch by remember { mutableStateOf(Offset.Unspecified) }
 
-    val radiusPx = with(density) { radiusDp.dp.toPx() }
+        val radiusPx = with(density) { radiusDp.dp.toPx() }
 
-    val runtimeEffect =
-        remember(size, touch, radiusPx, maxDepth, chromaticStrength, progress.value) {
-            if (
-                size.width == 0 ||
-                size.height == 0 ||
-                touch == Offset.Unspecified ||
-                abs(progress.value) <= 0.001f
-            ) {
-                null
-            } else {
-                shader.setFloatUniform("resolution", size.width.toFloat(), size.height.toFloat())
-                shader.setFloatUniform("touch", touch.x, touch.y)
-                shader.setFloatUniform("radius", radiusPx)
-                shader.setFloatUniform("progress", progress.value)
-                shader.setFloatUniform("maxDepth", maxDepth)
-                shader.setFloatUniform("chromaticStrength", chromaticStrength.coerceIn(0f, 0.5f))
-                AndroidRenderEffect
-                    .createRuntimeShaderEffect(shader, "composable")
-                    .asComposeRenderEffect()
+        val runtimeEffect =
+            remember(size, touch, radiusPx, maxDepth, chromaticStrength, progress.value) {
+                if (
+                    size.width == 0 ||
+                    size.height == 0 ||
+                    touch == Offset.Unspecified ||
+                    abs(progress.value) <= 0.001f
+                ) {
+                    null
+                } else {
+                    shader.setFloatUniform(
+                        "resolution",
+                        size.width.toFloat(),
+                        size.height.toFloat()
+                    )
+                    shader.setFloatUniform("touch", touch.x, touch.y)
+                    shader.setFloatUniform("radius", radiusPx)
+                    shader.setFloatUniform("progress", progress.value)
+                    shader.setFloatUniform("maxDepth", maxDepth)
+                    shader.setFloatUniform(
+                        "chromaticStrength",
+                        chromaticStrength.coerceIn(0f, 0.5f)
+                    )
+                    AndroidRenderEffect
+                        .createRuntimeShaderEffect(shader, "composable")
+                        .asComposeRenderEffect()
+                }
+            }
+
+        DisposableEffect(Unit) {
+            onDispose {
+                pressAnimationJob?.cancel()
+                releaseAnimationJob?.cancel()
             }
         }
 
-    DisposableEffect(Unit) {
-        onDispose {
-            pressAnimationJob?.cancel()
-            releaseAnimationJob?.cancel()
-        }
-    }
-
-    Modifier
-        .onSizeChanged { size = it }
-        .pointerInput(Unit) {
-            while (true) {
-                awaitPointerEventScope {
-                    var pressed = false
-                    while (!pressed) {
-                        val event = awaitPointerEvent(pass = PointerEventPass.Initial)
-                        val down = event.changes.firstOrNull { it.changedToDownIgnoreConsumed() }
-                        if (down != null) {
-                            touch = down.position
-                            releaseAnimationJob?.cancel()
-                            pressAnimationJob?.cancel()
-                            pressAnimationJob = scope.launch {
-                                progress.snapTo(0f)
-                                progress.animateTo(
-                                    targetValue = 1f,
-                                    animationSpec = Springs.smooth(durationMillis = 220)
-                                )
+        Modifier
+            .onSizeChanged { size = it }
+            .pointerInput(Unit) {
+                while (true) {
+                    awaitPointerEventScope {
+                        var pressed = false
+                        while (!pressed) {
+                            val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+                            val down =
+                                event.changes.firstOrNull { it.changedToDownIgnoreConsumed() }
+                            if (down != null) {
+                                touch = down.position
+                                releaseAnimationJob?.cancel()
+                                pressAnimationJob?.cancel()
+                                pressAnimationJob = scope.launch {
+                                    progress.snapTo(0f)
+                                    progress.animateTo(
+                                        targetValue = 1f,
+                                        animationSpec = Springs.smooth(durationMillis = 220)
+                                    )
+                                }
+                                pressed = true
                             }
-                            pressed = true
+                        }
+
+                        while (pressed) {
+                            val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+                            event.changes.firstOrNull { it.pressed }?.let { touch = it.position }
+                            pressed = event.changes.any { it.pressed }
                         }
                     }
 
-                    while (pressed) {
-                        val event = awaitPointerEvent(pass = PointerEventPass.Initial)
-                        event.changes.firstOrNull { it.pressed }?.let { touch = it.position }
-                        pressed = event.changes.any { it.pressed }
+                    pressAnimationJob?.cancel()
+                    releaseAnimationJob?.cancel()
+                    releaseAnimationJob = scope.launch {
+                        progress.animateTo(
+                            targetValue = 0f,
+                            animationSpec = Springs.smooth(durationMillis = 400)
+                        )
                     }
                 }
-
-                pressAnimationJob?.cancel()
-                releaseAnimationJob?.cancel()
-                releaseAnimationJob = scope.launch {
-                    progress.animateTo(
-                        targetValue = 0f,
-                        animationSpec = Springs.smooth(durationMillis = 400)
-                    )
-                }
             }
-        }
-        .graphicsLayer {
-            renderEffect = runtimeEffect
-        }
+            .graphicsLayer {
+                renderEffect = runtimeEffect
+            }
+    }
+} else {
+    this
 }
 
 fun Modifier.centerWaveShaderEffect(
@@ -256,51 +269,59 @@ fun Modifier.centerWaveShaderEffect(
     waveWidthMultiplier: Float = 1.5f,
     centerX: Float = 0.5f,
     centerY: Float = 0.5f
-): Modifier = composed {
-    val shader = remember { RuntimeShader(CENTER_WAVE_SHADER) }
-    val progress = remember { Animatable(0f) }
-    var size by remember { mutableStateOf(IntSize.Zero) }
+): Modifier = if (supportsRuntimeShaderEffect()) {
+    composed {
+        val shader = remember { RuntimeShader(CENTER_WAVE_SHADER) }
+        val progress = remember { Animatable(0f) }
+        var size by remember { mutableStateOf(IntSize.Zero) }
 
-    val safeDurationMillis = durationMillis.coerceAtLeast(1)
-    val safeIntensity = intensity.coerceAtLeast(0f)
-    val safeChromaticStrength = chromaticStrength.coerceIn(0f, 1f)
-    val safeWaveWidthMultiplier = waveWidthMultiplier.coerceAtLeast(0.1f)
-    val safeCenterX = centerX.coerceIn(0f, 1f)
-    val safeCenterY = centerY.coerceIn(0f, 1f)
+        val safeDurationMillis = durationMillis.coerceAtLeast(1)
+        val safeIntensity = intensity.coerceAtLeast(0f)
+        val safeChromaticStrength = chromaticStrength.coerceIn(0f, 1f)
+        val safeWaveWidthMultiplier = waveWidthMultiplier.coerceAtLeast(0.1f)
+        val safeCenterX = centerX.coerceIn(0f, 1f)
+        val safeCenterY = centerY.coerceIn(0f, 1f)
 
-    LaunchedEffect(safeDurationMillis) {
-        progress.snapTo(0f)
-        progress.animateTo(
-            targetValue = 1f,
-            animationSpec = tween(
-                durationMillis = safeDurationMillis,
-                easing = LinearEasing
+        LaunchedEffect(safeDurationMillis) {
+            progress.snapTo(0f)
+            progress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = safeDurationMillis,
+                    easing = LinearEasing
+                )
             )
-        )
-    }
-
-    Modifier
-        .onSizeChanged { size = it }
-        .graphicsLayer {
-            val currentProgress = progress.value
-            if (
-                size.width == 0 ||
-                size.height == 0 ||
-                safeIntensity <= 0f ||
-                currentProgress <= 0.001f ||
-                currentProgress >= 0.999f
-            ) {
-                renderEffect = null
-            } else {
-                shader.setFloatUniform("resolution", size.width.toFloat(), size.height.toFloat())
-                shader.setFloatUniform("progress", currentProgress)
-                shader.setFloatUniform("intensity", safeIntensity)
-                shader.setFloatUniform("chromaticStrength", safeChromaticStrength)
-                shader.setFloatUniform("waveWidthMultiplier", safeWaveWidthMultiplier)
-                shader.setFloatUniform("centerFraction", safeCenterX, safeCenterY)
-                renderEffect = AndroidRenderEffect
-                    .createRuntimeShaderEffect(shader, "composable")
-                    .asComposeRenderEffect()
-            }
         }
+
+        Modifier
+            .onSizeChanged { size = it }
+            .graphicsLayer {
+                val currentProgress = progress.value
+                if (
+                    size.width == 0 ||
+                    size.height == 0 ||
+                    safeIntensity <= 0f ||
+                    currentProgress <= 0.001f ||
+                    currentProgress >= 0.999f
+                ) {
+                    renderEffect = null
+                } else {
+                    shader.setFloatUniform(
+                        "resolution",
+                        size.width.toFloat(),
+                        size.height.toFloat()
+                    )
+                    shader.setFloatUniform("progress", currentProgress)
+                    shader.setFloatUniform("intensity", safeIntensity)
+                    shader.setFloatUniform("chromaticStrength", safeChromaticStrength)
+                    shader.setFloatUniform("waveWidthMultiplier", safeWaveWidthMultiplier)
+                    shader.setFloatUniform("centerFraction", safeCenterX, safeCenterY)
+                    renderEffect = AndroidRenderEffect
+                        .createRuntimeShaderEffect(shader, "composable")
+                        .asComposeRenderEffect()
+                }
+            }
+    }
+} else {
+    this
 }

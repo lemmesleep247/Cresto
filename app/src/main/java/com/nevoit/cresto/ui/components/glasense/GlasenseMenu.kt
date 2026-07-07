@@ -69,7 +69,8 @@ import com.nevoit.cresto.theme.AppColors
 import com.nevoit.cresto.theme.LocalGlasenseSettings
 import com.nevoit.cresto.theme.isAppInDarkTheme
 import com.nevoit.cresto.ui.components.glasense.material.MaterialRecipes
-import com.nevoit.cresto.ui.components.glasense.material.rememberMaterialRenderEffect
+import com.nevoit.cresto.ui.components.glasense.material.rememberMaterialRenderEffectOrNull
+import com.nevoit.cresto.util.supportsRuntimeShaderEffect
 import com.nevoit.glasense.core.component.Icon
 import com.nevoit.glasense.core.component.Text
 import com.nevoit.glasense.core.component.VDivider
@@ -270,7 +271,7 @@ fun GlasenseMenu(
 
     val shape = RoundedCornerShape(16.dp)
 
-    val renderEffect = rememberMaterialRenderEffect(MaterialRecipes.menu())
+    val materialEffect = rememberMaterialRenderEffectOrNull(MaterialRecipes.menu())
 
     if (menuState.isVisible) {
         BackHandler { onDismiss() }
@@ -350,7 +351,7 @@ fun GlasenseMenu(
                         .graphicsLayer {
                             this.alpha = alphaAni.value
                         }
-                        .background(GlasenseTheme.colors.cardBackground) else Modifier.drawPlainBackdrop(
+                        .background(GlasenseTheme.colors.cardBackground) else if (supportsRuntimeShaderEffect()) Modifier.drawPlainBackdrop(
                         backdrop = backdrop,
                         shape = { RectangleShape },
                         layerBlock = {
@@ -358,10 +359,14 @@ fun GlasenseMenu(
                         },
                         effects = {
                             padding = 50.dp.toPx() * 2
-                            effect(renderEffect)
+                            materialEffect?.let { effect(it) }
                             blur(50.dp.toPx())
                         }
-                    ))
+                    ) else Modifier
+                        .graphicsLayer {
+                            this.alpha = alphaAni.value
+                        }
+                        .background(GlasenseTheme.colors.cardBackground))
                 .glasenseHighlight(16.dp)
                 .layout { measurable, constraints ->
                     val placeable = measurable.measure(constraints)
@@ -409,7 +414,7 @@ fun CustomMenuContent(items: List<GlasenseMenuItem>, onDismiss: () -> Unit) {
                             modifier = Modifier.padding(horizontal = 1.5.dp),
                             color = dividerColor,
                             width = 1.dp,
-                            blendMode = BlendMode.Luminosity
+                            blendMode = BlendMode.SrcOver
                         )
                     }
                 }
@@ -418,7 +423,7 @@ fun CustomMenuContent(items: List<GlasenseMenuItem>, onDismiss: () -> Unit) {
                     Spacer(
                         modifier = Modifier
                             .graphicsLayer {
-                                blendMode = BlendMode.Luminosity
+                                blendMode = BlendMode.SrcOver
                                 alpha = 0.5f
                             }
                             .fillMaxWidth()
@@ -443,7 +448,7 @@ fun CustomMenuContent(items: List<GlasenseMenuItem>, onDismiss: () -> Unit) {
                             modifier = Modifier.padding(horizontal = 1.5.dp),
                             color = dividerColor,
                             width = 1.dp,
-                            blendMode = BlendMode.Luminosity
+                            blendMode = BlendMode.SrcOver
                         )
                     }
                 }

@@ -83,6 +83,7 @@ import com.nevoit.cresto.feature.settings.util.SettingsViewModel
 import com.nevoit.cresto.theme.AppButtonColors
 import com.nevoit.cresto.theme.AppColors
 import com.nevoit.cresto.theme.LocalGlasenseSettings
+import com.nevoit.cresto.toolkit.gaussiangradient.smoothGradientMask
 import com.nevoit.cresto.ui.components.CustomAnimatedVisibility
 import com.nevoit.cresto.ui.components.glasense.GlasenseButtonAdaptable
 import com.nevoit.cresto.ui.components.glasense.GlasenseButtonToolBar
@@ -95,6 +96,7 @@ import com.nevoit.cresto.ui.components.myFadeOut
 import com.nevoit.cresto.ui.components.myScaleIn
 import com.nevoit.cresto.ui.components.myScaleOut
 import com.nevoit.cresto.ui.components.packed.PageContent
+import com.nevoit.cresto.util.supportsRuntimeShaderEffect
 import com.nevoit.glasense.core.component.Icon
 import com.nevoit.glasense.core.component.Text
 import com.nevoit.glasense.core.component.VGap
@@ -360,15 +362,16 @@ fun CalendarScreen() {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .drawPlainBackdrop(
-                        backdrop = backdrop,
-                        shape = { RectangleShape },
-                        effects = {
-                            if (blur) blur(3f.dp.toPx())
+                    .then(
+                        if (supportsRuntimeShaderEffect()) Modifier.drawPlainBackdrop(
+                            backdrop = backdrop,
+                            shape = { RectangleShape },
+                            effects = {
+                                if (blur) blur(3f.dp.toPx())
 
-                            runtimeShaderEffect(
-                                "AlphaMask",
-                                """
+                                runtimeShaderEffect(
+                                    "AlphaMask",
+                                    """
 uniform shader content;
 
 uniform float2 size;
@@ -380,14 +383,21 @@ float blurAlpha = smoothstep(size.y, size.y * 0.7, coord.y);
 float tintAlpha = smoothstep(size.y, size.y * 0.6, coord.y);
 return mix(content.eval(coord) * blurAlpha, tint * tintAlpha, tintIntensity);
 }""", "content"
-                            ) {
-                                apply {
-                                    setFloatUniform("size", size.width, size.height)
-                                    setColorUniform("tint", backgroundColor)
-                                    setFloatUniform("tintIntensity", 0.7f)
+                                ) {
+                                    apply {
+                                        setFloatUniform("size", size.width, size.height)
+                                        setColorUniform("tint", backgroundColor)
+                                        setFloatUniform("tintIntensity", 0.7f)
+                                    }
                                 }
                             }
-                        }
+                        ) else Modifier
+                            .smoothGradientMask(
+                                color = backgroundColor,
+                                start = 1f,
+                                end = 0.6f,
+                                intensity = 0.7f
+                            )
                     )
                     .statusBarsPadding()
                     .height(with(density) { headerHeightPx.toDp() + 24.dp })

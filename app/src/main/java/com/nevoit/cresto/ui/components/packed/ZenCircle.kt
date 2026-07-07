@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.toArgb
+import com.nevoit.cresto.util.supportsRuntimeShaderEffect
 import org.intellij.lang.annotations.Language
 import kotlin.random.Random
 
@@ -108,9 +109,46 @@ val ZEN_CIRCLES_PLUS_HYBRID_SHADER = """
     }
 """
 
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 fun ZenCirclesBreathing(
+    modifier: Modifier = Modifier,
+    backgroundColor: Color = Color.Black,
+    colorA: Color = Color(0xFF00E6FF),
+    colorB: Color = Color(0xFF9980FF),
+    scale: Float = 2.00f,
+    thickness: Float = 0.001f,
+    breathAmp: Float = 0.068f,
+    layerDelay: Float = 0.42f,
+    blur: Float = 0.11f,
+    layerGap: Float = 0.007f,
+    intensity: Float = 1.0f,
+    seed: Float = remember { Random.nextFloat() * 1000f }
+) {
+    if (supportsRuntimeShaderEffect()) {
+        ZenCirclesBreathingShader(
+            modifier = modifier,
+            backgroundColor = backgroundColor,
+            colorA = colorA,
+            colorB = colorB,
+            scale = scale,
+            thickness = thickness,
+            breathAmp = breathAmp,
+            layerDelay = layerDelay,
+            blur = blur,
+            layerGap = layerGap,
+            intensity = intensity,
+            seed = seed
+        )
+    } else {
+        Canvas(modifier = modifier.fillMaxSize()) {
+            drawRect(backgroundColor)
+        }
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+@Composable
+private fun ZenCirclesBreathingShader(
     modifier: Modifier = Modifier,
     backgroundColor: Color = Color.Black,
     colorA: Color = Color(0xFF00E6FF),

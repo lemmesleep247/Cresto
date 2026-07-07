@@ -59,6 +59,7 @@ import com.nevoit.cresto.ui.components.glasense.SelectiveMenuItemData
 import com.nevoit.cresto.ui.components.glasense.isScrolledPast
 import com.nevoit.cresto.ui.components.packed.ConfigInfoHeader
 import com.nevoit.cresto.ui.components.packed.TopBarSpacer
+import com.nevoit.cresto.util.supportsRuntimeShaderEffect
 import com.nevoit.glasense.component.ListRowAccessory
 import com.nevoit.glasense.component.ListStack
 import com.nevoit.glasense.core.component.Icon
@@ -323,7 +324,7 @@ fun GeneralScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                 }
             }
 
-            if (isEasterEggEnabled) {
+            if (isEasterEggEnabled && supportsRuntimeShaderEffect()) {
                 Section(
                     header = { "???" },
                     footer = { "We're leaving the planet and you can't come." })

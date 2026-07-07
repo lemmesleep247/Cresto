@@ -47,6 +47,7 @@ import com.nevoit.glasense.theme.tokens.Springs
 
 @Composable
 fun LazyItemScope.TodoListItemRow(
+    modifier: Modifier = Modifier,
     item: TodoItemWithSubTodos,
     showDate: Boolean = true,
     isDueTodayMarkerEnabled: Boolean,
@@ -76,7 +77,7 @@ fun LazyItemScope.TodoListItemRow(
     }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .animateItem(placementSpec = Springs.crisp())
             .combinedClickable(
                 interactionSource = rowInteractionSource,
@@ -158,6 +159,7 @@ fun LazyItemScope.TodoListSectionHead(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
         modifier = Modifier
+            .padding(horizontal = 12.dp)
             .zIndex(-1f)
             .animateItem(placementSpec = Springs.crisp())
             .fillMaxWidth()

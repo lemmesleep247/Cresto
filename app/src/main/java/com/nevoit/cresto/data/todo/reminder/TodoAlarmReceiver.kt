@@ -1,6 +1,5 @@
 package com.nevoit.cresto.data.todo.reminder
 
-import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -8,23 +7,22 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.RingtoneManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import com.nevoit.cresto.R
 import com.nevoit.cresto.data.todo.EXTRA_TODO_ID
 import com.nevoit.cresto.data.todo.TodoDatabase
+import com.nevoit.cresto.data.todo.TodoRepository
 import com.nevoit.cresto.feature.detail.DetailActivity
+import com.nevoit.cresto.util.NotificationPermissionCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.koin.core.context.GlobalContext
 import java.time.LocalDateTime
-import com.nevoit.cresto.data.todo.TodoRepository
 
 class TodoAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -55,11 +53,7 @@ class TodoAlarmReceiver : BroadcastReceiver() {
             }
         }
 
-        if (ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
+        if (!NotificationPermissionCompat.canPostNotifications(context)) {
             return
         }
 

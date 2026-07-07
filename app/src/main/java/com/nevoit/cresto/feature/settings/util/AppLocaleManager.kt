@@ -1,8 +1,8 @@
 package com.nevoit.cresto.feature.settings.util
 
-import android.app.LocaleManager
 import android.content.Context
-import android.os.LocaleList
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 
 object AppLocaleManager {
     const val SYSTEM = ""
@@ -11,18 +11,18 @@ object AppLocaleManager {
     const val HINDI = "hi"
     const val JAPANESE = "ja"
 
+    @Suppress("UNUSED_PARAMETER")
     fun getLanguageTag(context: Context): String {
-        return context.getSystemService(LocaleManager::class.java)
-            .applicationLocales
-            .toLanguageTags()
+        return AppCompatDelegate.getApplicationLocales().toLanguageTags()
     }
 
+    @Suppress("UNUSED_PARAMETER")
     fun setLanguageTag(context: Context, tag: String) {
-        context.getSystemService(LocaleManager::class.java)
-            .applicationLocales = if (tag == SYSTEM) {
-            LocaleList.getEmptyLocaleList()
+        val locales = if (tag == SYSTEM) {
+            LocaleListCompat.getEmptyLocaleList()
         } else {
-            LocaleList.forLanguageTags(tag)
+            LocaleListCompat.forLanguageTags(tag)
         }
+        AppCompatDelegate.setApplicationLocales(locales)
     }
 }

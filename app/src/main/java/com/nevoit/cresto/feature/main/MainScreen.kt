@@ -61,6 +61,7 @@ import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.highlight.Highlight
+import com.kyant.backdrop.highlight.HighlightStyle
 import com.kyant.shapes.Capsule
 import com.nevoit.cresto.R
 import com.nevoit.cresto.data.todo.TodoItem
@@ -404,10 +405,9 @@ fun MainScreen() {
                     .height(120.dp + navigationBarHeight)
                     .align(Alignment.BottomCenter)
                     .smoothGradientMask(
-                        surfaceColor.copy(alpha = 0f),
-                        surfaceColor.copy(alpha = 1f),
+                        surfaceColor,
                         0f,
-                        0.8f,
+                        0.5f,
                         0.7f
                     )
             ) {
@@ -456,7 +456,13 @@ fun MainScreen() {
                                     shape = { Capsule() },
                                     shadow = null,
                                     innerShadow = null,
-                                    highlight = { if (liquidGlass) Highlight.Default else null },
+                                    highlight = {
+                                        if (liquidGlass) Highlight.Default.copy(
+                                            style = HighlightStyle.Default(
+                                                angle = 90f
+                                            )
+                                        ) else null
+                                    },
                                     effects = {
                                         blur(
                                             if (liquidGlass) 8f.dp.toPx() else 32f.dp.toPx(),
@@ -487,7 +493,13 @@ fun MainScreen() {
                                     shape = { Capsule() },
                                     shadow = null,
                                     innerShadow = null,
-                                    highlight = { if (liquidGlass) Highlight.Default else null },
+                                    highlight = {
+                                        if (liquidGlass) Highlight.Default.copy(
+                                            style = HighlightStyle.Default(
+                                                angle = 90f
+                                            )
+                                        ) else null
+                                    },
                                     effects = {
                                         blur(
                                             if (liquidGlass) 8f.dp.toPx() else 32f.dp.toPx(),
@@ -591,7 +603,13 @@ fun MainScreen() {
                                     shape = { Capsule() },
                                     shadow = null,
                                     innerShadow = null,
-                                    highlight = { if (liquidGlass) Highlight.Default else null },
+                                    highlight = {
+                                        if (liquidGlass) Highlight.Default.copy(
+                                            style = HighlightStyle.Default(
+                                                angle = 90f
+                                            )
+                                        ) else null
+                                    },
                                     effects = {
                                         blur(
                                             if (liquidGlass) 8f.dp.toPx() else 32f.dp.toPx(),
@@ -627,7 +645,7 @@ fun MainScreen() {
             if (bottomSheetState.isVisible) {
                 BottomSheet(
                     onDismiss = { viewModel.hideBottomSheet() },
-                    onAddClick = { title, notes, flagIndex, finalDate, startTime, endTime, reminder, repeatFrequency, repeatRuleConfig ->
+                    onAddClick = { title, notes, flagIndex, finalDate, startTime, endTime, reminder, repeatFrequency, repeatRuleConfig, groupId ->
                         viewModel.insert(
                             TodoItem(
                                 title = title,
@@ -642,7 +660,7 @@ fun MainScreen() {
                                 reminderTime = reminder?.time,
                                 reminderPersistent = reminder?.persistent ?: false,
                                 reminderStrong = reminder?.strong ?: false,
-                                groupId = bottomSheetState.initialGroupId
+                                groupId = groupId
                             ),
                             repeatFrequency = repeatFrequency,
                             repeatRuleConfig = repeatRuleConfig
@@ -688,6 +706,7 @@ fun MainScreen() {
                     selectedFilter = selectedHomeGroupFilter,
                     onFilterSelected = viewModel::updateHomeGroupFilterFromSheet,
                     onCreateGroup = { name -> viewModel.createTodoGroup(name) },
+                    onRenameGroup = viewModel::updateTodoGroup,
                     onDeleteGroup = viewModel::deleteTodoGroup,
                     onDismissed = { isGroupBottomSheetVisible = false }
                 )

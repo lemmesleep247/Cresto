@@ -79,7 +79,8 @@ fun BottomSheet(
 
     val bottomSheetShape = deviceCornerShape(
         bottomLeft = false,
-        bottomRight = false
+        bottomRight = false,
+        maxRadius = 36.dp
     )
 
     var isDismissing by remember { mutableStateOf(false) }

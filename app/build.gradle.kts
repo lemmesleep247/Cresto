@@ -31,7 +31,7 @@ android {
 
     defaultConfig {
         applicationId = "com.nevoit.cresto"
-        minSdk = 33
+        minSdk = 31
         targetSdk = 37
         versionCode = vCodeProvider.get()
         versionName = vNameProvider.get()
@@ -94,6 +94,7 @@ kotlin {
 dependencies {
     implementation(project(":glasense-ui"))
     implementation(libs.androidx.glance.appwidget)
+    implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -107,6 +108,7 @@ dependencies {
     implementation(libs.androidx.compose.animation.graphics)
     implementation(libs.androidx.compose.foundation.layout)
     testImplementation(libs.junit)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

@@ -56,31 +56,35 @@ class TodoRepository(
 
     val todoGroupCounts: Flow<List<TodoGroupCount>> = todoDao.getTodoGroupCounts()
 
-    suspend fun createTodoGroup(name: String, color: Int = 0): Long {
+    suspend fun createTodoGroup(name: String, color: Int = 0): Long = todoDatabase.withTransaction {
         val normalizedName = name.trim()
         require(normalizedName.isNotEmpty()) { "Group name must not be blank" }
-        todoDao.getTodoGroupByNameSnapshot(normalizedName)?.let { existing ->
-            return existing.id.toLong()
-        }
+        val usedNames = todoDao.getAllTodoGroupsSnapshot()
+            .mapTo(mutableSetOf()) { it.name }
+        val sortOrder = todoDao.getNextTodoGroupSortOrder()
 
-        val insertedId = todoDao.insertTodoGroup(
-            TodoGroup(
-                name = normalizedName,
-                color = color,
-                sortOrder = todoDao.getNextTodoGroupSortOrder()
+        while (true) {
+            val uniqueName = resolveTodoGroupName(normalizedName, usedNames)
+            val insertedId = todoDao.insertTodoGroup(
+                TodoGroup(
+                    name = uniqueName,
+                    color = color,
+                    sortOrder = sortOrder
+                )
             )
-        )
-        return if (insertedId != -1L) {
-            insertedId
-        } else {
-            todoDao.getTodoGroupByNameSnapshot(normalizedName)?.id?.toLong() ?: insertedId
+            if (insertedId != -1L) return@withTransaction insertedId
+            usedNames += uniqueName
         }
+        throw IllegalStateException("Unable to create todo group")
     }
 
-    suspend fun updateTodoGroup(group: TodoGroup) {
+    suspend fun updateTodoGroup(group: TodoGroup) = todoDatabase.withTransaction {
         val normalizedName = group.name.trim()
         require(normalizedName.isNotEmpty()) { "Group name must not be blank" }
-        todoDao.updateTodoGroup(group.copy(name = normalizedName))
+        val usedNames = todoDao.getAllTodoGroupsSnapshot()
+            .filter { it.id != group.id }
+            .mapTo(mutableSetOf()) { it.name }
+        todoDao.updateTodoGroup(group.copy(name = resolveTodoGroupName(normalizedName, usedNames)))
     }
 
     suspend fun deleteTodoGroup(group: TodoGroup) {
@@ -1161,5 +1165,16 @@ class TodoRepository(
 
     private companion object {
         private const val SQLITE_BIND_PARAMETER_CHUNK_SIZE = 900
+    }
+}
+
+internal fun resolveTodoGroupName(baseName: String, usedNames: Set<String>): String {
+    if (baseName !in usedNames) return baseName
+
+    var suffix = 1
+    while (true) {
+        val candidate = "$baseName ($suffix)"
+        if (candidate !in usedNames) return candidate
+        suffix++
     }
 }

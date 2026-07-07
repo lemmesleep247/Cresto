@@ -2,18 +2,33 @@ package com.nevoit.cresto.ui.components.glasense.material
 
 import android.graphics.RenderEffect
 import android.graphics.RuntimeShader
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.RenderEffect as ComposeRenderEffect
 import androidx.compose.ui.graphics.asComposeRenderEffect
+import com.nevoit.cresto.util.supportsRuntimeShaderEffect
 
 @Composable
-fun rememberMaterialRenderEffect(recipe: MaterialRecipe): androidx.compose.ui.graphics.RenderEffect {
+fun rememberMaterialRenderEffectOrNull(recipe: MaterialRecipe): ComposeRenderEffect? {
+    return if (supportsRuntimeShaderEffect()) {
+        rememberMaterialRenderEffect(recipe)
+    } else {
+        null
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+@Composable
+fun rememberMaterialRenderEffect(recipe: MaterialRecipe): ComposeRenderEffect {
     return remember(recipe) {
         recipe.toRenderEffect()
     }
 }
 
-fun MaterialRecipe.toRenderEffect(): androidx.compose.ui.graphics.RenderEffect {
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+fun MaterialRecipe.toRenderEffect(): ComposeRenderEffect {
     val shader = RuntimeShader(AGSL_CODE)
 
     shader.setFloatUniform("p0", luminanceMapCurve.p0)

@@ -3,9 +3,9 @@ package com.nevoit.cresto.feature.settings
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.core.view.WindowCompat
@@ -30,7 +30,7 @@ enum class SettingsDestination(val value: String) {
     }
 }
 
-class SettingsActivity : ComponentActivity() {
+class SettingsActivity : AppCompatActivity() {
 
     companion object {
         private const val EXTRA_SETTINGS_DESTINATION = "settings_destination"
