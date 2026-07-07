@@ -13,7 +13,18 @@
         </DropdownSelection>
         <DialogSelection />
       </SelectionState>
-      <SelectionState runConfigName="glasense-ui-demo">
+      <SelectionState runConfigName="androidTest">
+        <option name="selectionMode" value="DROPDOWN" />
+        <DropdownSelection timestamp="2026-03-28T09:48:06.305270300Z">
+          <Target type="DEFAULT_BOOT">
+            <handle>
+              <DeviceId pluginId="PhysicalDevice" identifier="serial=6f5fad86" />
+            </handle>
+          </Target>
+        </DropdownSelection>
+        <DialogSelection />
+      </SelectionState>
+      <SelectionState runConfigName="unitTest">
         <option name="selectionMode" value="DROPDOWN" />
         <DropdownSelection timestamp="2026-03-28T09:48:06.305270300Z">
           <Target type="DEFAULT_BOOT">
@@ -26,10 +37,10 @@
       </SelectionState>
       <SelectionState runConfigName="main">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-05-22T14:24:48.286286500Z">
+        <DropdownSelection timestamp="2026-07-06T12:19:26.560509200Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="Wireless" identifier="serviceName=adb-6f5fad86-98ckM0 (2)" />
+              <DeviceId pluginId="PhysicalDevice" identifier="serial=6f5fad86" />
             </handle>
           </Target>
         </DropdownSelection>
