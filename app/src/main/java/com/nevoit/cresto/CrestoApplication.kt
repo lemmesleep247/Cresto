@@ -2,6 +2,7 @@ package com.nevoit.cresto
 
 import android.app.Application
 import com.nevoit.cresto.data.todo.appModule
+import com.nevoit.cresto.data.todo.cleanup.RecentlyDeletedCleanupScheduler
 import com.nevoit.cresto.data.todo.reminder.TodoReminderNotifications
 import com.nevoit.cresto.feature.shareextract.ShareExtractNotifications
 import com.nevoit.cresto.feature.screenextract.ScreenExtractNotifications
@@ -29,5 +30,6 @@ class CrestoApplication : Application() {
 
             modules(appModule)
         }
+        RecentlyDeletedCleanupScheduler.schedule(this)
     }
 }

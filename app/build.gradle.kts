@@ -85,8 +85,7 @@ kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         freeCompilerArgs.addAll(
-            "-XXLanguage:+PropertyParamAnnotationDefaultTargetMode",
-            "-Xannotation-default-target=param-property"
+            "-XXLanguage:+PropertyParamAnnotationDefaultTargetMode"
         )
     }
 }
@@ -119,6 +118,7 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.work.runtime)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.collections.immutable)

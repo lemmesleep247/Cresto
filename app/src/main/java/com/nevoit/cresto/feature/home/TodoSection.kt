@@ -62,6 +62,7 @@ fun LazyItemScope.TodoListItemRow(
     onCheckedChange: (Boolean) -> Unit,
     onDelete: () -> Unit,
     onCheckboxTapPosition: ((Offset) -> Unit)? = null,
+    onTogglePinned: (() -> Unit)? = null,
 ) {
     val alpha = remember { Animatable(if (isSelected) 1f else 0f) }
     val rowInteractionSource = remember { MutableInteractionSource() }
@@ -123,7 +124,8 @@ fun LazyItemScope.TodoListItemRow(
                     }
                 }
             },
-            listState = swipeListState
+            listState = swipeListState,
+            onTogglePinned = onTogglePinned
         )
 
         if (isSelectionModeActive) {
@@ -143,8 +145,10 @@ fun LazyItemScope.TodoListItemRow(
 @Composable
 fun LazyItemScope.TodoListSectionHead(
     title: String,
-    isExpanded: Boolean,
-    onExpandedChange: () -> Unit
+    horizontalPadding: Boolean = true,
+    isExpanded: Boolean = true,
+    showExpandIcon: Boolean = true,
+    onExpandedChange: (() -> Unit)? = null
 ) {
     val degree = remember { Animatable(if (isExpanded) 90f else 180f) }
     LaunchedEffect(isExpanded) {
@@ -155,19 +159,24 @@ fun LazyItemScope.TodoListSectionHead(
         }
     }
     val interactionSource = remember { MutableInteractionSource() }
+    val expandableModifier = if (onExpandedChange != null) {
+        Modifier.clickable(
+            interactionSource = interactionSource,
+            indication = null,
+            onClick = onExpandedChange
+        )
+    } else {
+        Modifier
+    }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
         modifier = Modifier
-            .padding(horizontal = 12.dp)
+            .padding(horizontal = if (horizontalPadding) 12.dp else 0.dp)
             .zIndex(-1f)
             .animateItem(placementSpec = Springs.crisp())
             .fillMaxWidth()
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onExpandedChange
-            )
+            .then(expandableModifier)
             .padding(top = 8.dp, bottom = 8.dp, start = 12.dp)
     ) {
         Text(
@@ -176,16 +185,18 @@ fun LazyItemScope.TodoListSectionHead(
             fontWeight = FontWeight.Normal,
             color = AppColors.contentVariant
         )
-        Icon(
-            painter = painterResource(R.drawable.ic_forward_nav),
-            contentDescription = stringResource(R.string.expand),
-            modifier = Modifier
-                .padding(end = 8.dp)
-                .size(20.dp)
-                .alpha(.5f)
-                .graphicsLayer {
-                    rotationZ = degree.value
-                }
-        )
+        if (showExpandIcon) {
+            Icon(
+                painter = painterResource(R.drawable.ic_forward_nav),
+                contentDescription = stringResource(R.string.expand),
+                modifier = Modifier
+                    .padding(end = 8.dp)
+                    .size(20.dp)
+                    .alpha(.5f)
+                    .graphicsLayer {
+                        rotationZ = degree.value
+                    }
+            )
+        }
     }
 }

@@ -184,6 +184,26 @@ interface TodoDao {
 
     @Query(
         """
+        SELECT * FROM todo_items
+        WHERE deletedAt IS NOT NULL AND deletedAt <= :cutoff
+        ORDER BY deletedAt ASC
+        """
+    )
+    suspend fun getRecentlyDeletedAtOrBefore(cutoff: LocalDateTime): List<TodoItem>
+
+    @Query(
+        """
+        DELETE FROM todo_items
+        WHERE id IN (:ids) AND deletedAt IS NOT NULL AND deletedAt <= :cutoff
+        """
+    )
+    suspend fun hardDeleteRecentlyDeletedByIds(
+        ids: List<Int>,
+        cutoff: LocalDateTime
+    ): Int
+
+    @Query(
+        """
         UPDATE todo_items
         SET calendarEventId = :calendarEventId,
             calendarSyncedAt = :calendarSyncedAt
@@ -222,6 +242,11 @@ interface TodoDao {
         isCompleted: Boolean,
         completedDateTime: LocalDateTime?
     )
+
+    @Query(
+        "UPDATE todo_items SET isPinned = :isPinned WHERE id = :id AND deletedAt IS NULL"
+    )
+    suspend fun updatePinned(id: Int, isPinned: Boolean)
 
     @Query("SELECT COUNT(*) FROM todo_items WHERE id IN (:ids) AND isCompleted = 1 AND deletedAt IS NULL")
     suspend fun getCompletedCountByIds(ids: List<Int>): Int

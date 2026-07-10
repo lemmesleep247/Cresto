@@ -80,9 +80,17 @@ val MIGRATION_28_29 = object : Migration(28, 29) {
     }
 }
 
+val MIGRATION_29_30 = object : Migration(29, 30) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "ALTER TABLE todo_items ADD COLUMN isPinned INTEGER NOT NULL DEFAULT 0"
+        )
+    }
+}
+
 @Database(
     entities = [TodoItem::class, SubTodoItem::class, RepeatRule::class, TodoGroup::class],
-    version = 29,
+    version = 30,
     exportSchema = true
 )
 

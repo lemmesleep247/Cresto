@@ -15,24 +15,24 @@ object GlasenseTheme {
 
     val darkTheme: Boolean
         @Composable get() = LocalDarkTheme.current
-}
 
-@Composable
-fun GlasenseTheme(
-    darkTheme: Boolean,
-    colors: GlasenseColors = if (darkTheme) GlasenseDarkPalette else GlasenseLightPalette,
-    specs: GlasenseSpecs = GlasenseSpecsStandard,
-    type: GlasenseType = GlasenseTypeStandard,
-    content: @Composable () -> Unit
-) {
-    CompositionLocalProvider(
-        LocalGlasenseColors provides colors,
-        LocalGlasenseSpecs provides specs,
-        LocalGlasenseType provides type,
-        LocalGlasenseTextStyle provides type.body,
-        LocalGlasenseContentColor provides colors.content,
-        LocalDarkTheme provides darkTheme
+    @Composable
+    operator fun invoke(
+        darkTheme: Boolean,
+        colors: GlasenseColors = if (darkTheme) GlasenseDarkPalette else GlasenseLightPalette,
+        specs: GlasenseSpecs = GlasenseSpecsStandard,
+        type: GlasenseType = GlasenseTypeStandard,
+        content: @Composable () -> Unit
     ) {
-        content()
+        CompositionLocalProvider(
+            LocalGlasenseColors provides colors,
+            LocalGlasenseSpecs provides specs,
+            LocalGlasenseType provides type,
+            LocalGlasenseTextStyle provides type.body,
+            LocalGlasenseContentColor provides colors.content,
+            LocalDarkTheme provides darkTheme
+        ) {
+            content()
+        }
     }
 }

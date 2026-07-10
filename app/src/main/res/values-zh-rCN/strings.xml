@@ -21,6 +21,10 @@
     <string name="flag">标记</string>
     <string name="title">标题</string>
     <string name="completed">已完成</string>
+    <string name="incomplete">未完成</string>
+    <string name="pinned">置顶</string>
+    <string name="pin">置顶</string>
+    <string name="unpin">取消置顶</string>
     <string name="expand">展开</string>
     <string name="selected_todos">已选择 %1$d 项</string>
     <string name="search_all_todos">在全部待办事项中搜索</string>
@@ -359,8 +363,15 @@
     <string name="insights_empty_trend">还没有完成记录</string>
     <string name="groups">分组</string>
     <string name="recently_deleted">最近删除</string>
+    <plurals name="recently_deleted_item_count">
+        <item quantity="other">共 %d 项</item>
+    </plurals>
+    <plurals name="recently_deleted_days_remaining">
+        <item quantity="other">%d 天</item>
+    </plurals>
     <string name="recently_deleted_empty">没有最近删除的待办事项</string>
     <string name="new_group">新建组</string>
     <string name="group">分组</string>
     <string name="rename">重命名</string>
+    <string name="recently_deleted_tip">已删除的待办将在 “最近删除” 中保留 30 天，之后自动永久删除。</string>
 </resources>

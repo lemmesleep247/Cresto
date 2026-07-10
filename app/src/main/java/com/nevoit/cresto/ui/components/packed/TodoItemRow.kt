@@ -154,10 +154,11 @@ fun TodoItemRow(
         Spacer(modifier = Modifier.width(12.dp))
         // If the to-do item has no due date, display only the title.
         if (itemTodo.dueDate == null && !hasTasks) {
-            LineThroughText(
+            TodoTitleRow(
                 text = itemTodo.title,
                 style = todoTitleTextStyle,
                 lineThrough = itemTodo.isCompleted,
+                isPinned = itemTodo.isPinned,
                 modifier = Modifier
                     .weight(1f)
                     .padding(vertical = 12.dp)
@@ -287,10 +288,11 @@ fun TodoItemRow(
                     .weight(1f)
                     .padding(vertical = 12.dp)
             ) {
-                LineThroughText(
+                TodoTitleRow(
                     text = itemTodo.title,
                     style = todoTitleTextStyle,
-                    lineThrough = itemTodo.isCompleted
+                    lineThrough = itemTodo.isCompleted,
+                    isPinned = itemTodo.isPinned
                 )
                 Spacer(modifier = Modifier.height(2.dp))
 //                val dueDateText: String? = itemTodo.dueDate?.let { dueDate ->
@@ -380,6 +382,35 @@ fun TodoItemRow(
             }
         }
         Spacer(modifier = Modifier.width(12.dp))
+    }
+}
+
+@Composable
+private fun TodoTitleRow(
+    text: String,
+    style: TextStyle,
+    lineThrough: Boolean,
+    isPinned: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (isPinned) {
+            Icon(
+                painter = painterResource(R.drawable.ic_pin_fill),
+                contentDescription = null,
+                tint = AppColors.highlightText,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+        LineThroughText(
+            text = text,
+            style = style,
+            lineThrough = lineThrough,
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 
@@ -650,11 +681,30 @@ fun SwipeableTodoItem(
     modifier: Modifier,
     onCheckedChange: (Boolean) -> Unit,
     onCheckboxTapPosition: (Offset) -> Unit = {},
-    checkboxEnabled: Boolean = true
+    checkboxEnabled: Boolean = true,
+    onTogglePinned: (() -> Unit)? = null
 ) {
-    val actions = persistentListOf(
+    val leftActions = if (onTogglePinned != null) {
+        persistentListOf(
+            SwipeableActionButton(
+                index = 0,
+                color = AppColors.primary,
+                iconColor = AppColors.onPrimary,
+                icon = if (item.todoItem.isPinned) painterResource(id = R.drawable.ic_pin_slash) else painterResource(
+                    id = R.drawable.ic_pin
+                ),
+                contentDescription = stringResource(
+                    if (item.todoItem.isPinned) R.string.unpin else R.string.pin
+                ),
+                triggerOnDeepSwipe = true
+            )
+        )
+    } else {
+        persistentListOf()
+    }
+    val rightActions = persistentListOf(
         SwipeableActionButton(
-            index = 0,
+            index = 1,
             color = AppColors.error,
             iconColor = AppColors.onError,
             icon = painterResource(id = R.drawable.ic_trash),
@@ -667,10 +717,12 @@ fun SwipeableTodoItem(
         key = item.todoItem.id,
         listState = listState,
         modifier = Modifier,
-        rightActions = actions,
+        leftActions = leftActions,
+        rightActions = rightActions,
         onAction = { index ->
             when (index) {
-                0 -> onDelete()
+                0 -> onTogglePinned?.invoke()
+                1 -> onDelete()
             }
         }
     ) {

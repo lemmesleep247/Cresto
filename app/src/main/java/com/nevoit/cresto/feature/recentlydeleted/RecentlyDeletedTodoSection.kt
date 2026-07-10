@@ -23,6 +23,7 @@ import com.nevoit.cresto.theme.AppSpecs
 import com.nevoit.cresto.ui.components.glasense.SwipeableListState
 import com.nevoit.cresto.ui.components.packed.SwipeableRecentlyDeletedTodoItem
 import com.nevoit.glasense.core.interaction.DimIndication
+import com.nevoit.glasense.theme.tokens.Springs
 
 @Composable
 fun LazyItemScope.RecentlyDeletedTodoListItemRow(
@@ -46,16 +47,18 @@ fun LazyItemScope.RecentlyDeletedTodoListItemRow(
     }
 
     Box(
-        modifier = Modifier.combinedClickable(
-            interactionSource = rowInteractionSource,
-            indication = DimIndication(shape = AppSpecs.cardShape),
-            onLongClick = {
-                if (isSelectionModeActive) onToggleSelection() else onEnterSelection()
-            },
-            onClick = {
-                if (isSelectionModeActive) onToggleSelection()
-            }
-        )
+        modifier = Modifier
+            .animateItem(placementSpec = Springs.crisp())
+            .combinedClickable(
+                interactionSource = rowInteractionSource,
+                indication = DimIndication(shape = AppSpecs.cardShape),
+                onLongClick = {
+                    if (isSelectionModeActive) onToggleSelection() else onEnterSelection()
+                },
+                onClick = {
+                    if (isSelectionModeActive) onToggleSelection()
+                }
+            )
     ) {
         SwipeableRecentlyDeletedTodoItem(
             listState = swipeListState,

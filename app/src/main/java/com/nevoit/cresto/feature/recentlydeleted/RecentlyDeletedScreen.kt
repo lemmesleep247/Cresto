@@ -6,7 +6,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -38,18 +37,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlurEffect
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -63,6 +59,7 @@ import com.kyant.backdrop.highlight.HighlightStyle
 import com.kyant.shapes.Capsule
 import com.nevoit.cresto.R
 import com.nevoit.cresto.data.todo.TodoViewModel
+import com.nevoit.cresto.feature.home.TodoListSectionHead
 import com.nevoit.cresto.theme.AppButtonColors
 import com.nevoit.cresto.theme.AppColors
 import com.nevoit.cresto.theme.LocalGlasenseSettings
@@ -82,6 +79,9 @@ import com.nevoit.glasense.core.component.Text
 import com.nevoit.glasense.core.component.VGap
 import com.nevoit.glasense.theme.GlasenseTheme
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
 
 @Composable
 fun RecentlyDeletedScreen(viewModel: TodoViewModel) {
@@ -134,6 +134,17 @@ fun RecentlyDeletedScreen(viewModel: TodoViewModel) {
 
     val floatingBarColor = AppColors.pageBackground.copy(.5f)
     val liquidGlass = LocalGlasenseSettings.current.liquidGlass
+    val today = LocalDate.now()
+    val todosByRemainingDays = remember(todos, today) {
+        todos.groupBy { item ->
+            recentlyDeletedDaysRemaining(
+                deletedAt = requireNotNull(item.todoItem.deletedAt) {
+                    "Recently deleted todo ${item.todoItem.id} must have a deletion time"
+                },
+                today = today
+            )
+        }.toSortedMap(reverseOrder())
+    }
 
     LaunchedEffect(listState.isScrollInProgress) {
         if (listState.isScrollInProgress) {
@@ -240,40 +251,31 @@ fun RecentlyDeletedScreen(viewModel: TodoViewModel) {
                         .height(60.dp)
                 )
             }
-            if (todos.isEmpty()) {
-                item(key = "empty") {
-                    Box(
-                        modifier = Modifier
-                            .padding(top = 48.dp)
-                            .fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Image(
-                                painter = painterResource(id = R.drawable.no_recently_deleted_artwork),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .width(96.dp)
-                                    .scale(1.2f),
-                                colorFilter = ColorFilter.tint(AppColors.primary)
-                            )
-                            Text(
-                                text = stringResource(id = R.string.recently_deleted_empty),
-                                color = AppColors.content,
-                                modifier = Modifier.padding(top = 4.dp),
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-
-                    }
+            item(key = "tip") {
+                Text(
+                    text = stringResource(R.string.recently_deleted_tip),
+                    style = GlasenseTheme.type.subHeadline,
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                    color = GlasenseTheme.colors.contentVariant
+                )
+                VGap()
+            }
+            todosByRemainingDays.forEach { (daysRemaining, groupedTodos) ->
+                item(key = "days_remaining_$daysRemaining") {
+                    TodoListSectionHead(
+                        title = pluralStringResource(
+                            R.plurals.recently_deleted_days_remaining,
+                            daysRemaining,
+                            daysRemaining
+                        ),
+                        showExpandIcon = false,
+                        horizontalPadding = false
+                    )
                 }
-            } else {
                 itemsIndexed(
-                    items = todos,
+                    items = groupedTodos,
                     key = { _, item -> item.todoItem.id }
-                ) { index, item ->
+                ) { _, item ->
                     RecentlyDeletedTodoListItemRow(
                         item = item,
                         isSelected = item.todoItem.id in selectedItemIds,
@@ -309,14 +311,29 @@ fun RecentlyDeletedScreen(viewModel: TodoViewModel) {
             isVisible = isSmallTitleVisible,
             backdrop = backdrop
         ) {
-            Text(
-                text = resolvedTitle,
-                style = GlasenseTheme.type.headline.copy(fontFeatureSettings = "tnum"),
-                maxLines = 1,
+            Column(
                 modifier = Modifier
                     .align(Alignment.Center),
-                overflow = TextOverflow.Ellipsis,
-            )
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = resolvedTitle,
+                    style = GlasenseTheme.type.headline.copy(fontFeatureSettings = "tnum"),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = pluralStringResource(
+                        R.plurals.recently_deleted_item_count,
+                        todos.size,
+                        todos.size
+                    ),
+                    style = GlasenseTheme.type.footnote.copy(fontFeatureSettings = "tnum"),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = GlasenseTheme.colors.contentVariant
+                )
+            }
         }
         AnimatedVisibility(
             visible = isSelectionModeActive,
@@ -553,3 +570,13 @@ fun RecentlyDeletedScreen(viewModel: TodoViewModel) {
         )
     }
 }
+
+internal fun recentlyDeletedDaysRemaining(
+    deletedAt: LocalDateTime,
+    today: LocalDate
+): Int = ChronoUnit.DAYS.between(
+    today,
+    deletedAt.toLocalDate().plusDays(RECENTLY_DELETED_RETENTION_DAYS)
+).toInt().coerceIn(0, RECENTLY_DELETED_RETENTION_DAYS.toInt())
+
+private const val RECENTLY_DELETED_RETENTION_DAYS = 30L
