@@ -10,6 +10,12 @@
     <string name="delete_permanently">永久删除</string>
     <string name="delete_permanently_title">永久删除此待办事项？</string>
     <string name="delete_permanently_message">此待办事项及其任务将被永久删除。此操作无法撤销。</string>
+    <string name="restore_selected_todos">恢复选定的待办事项</string>
+    <string name="delete_selected_permanently">永久删除选定的待办事项</string>
+    <plurals name="delete_selected_permanently_title">
+        <item quantity="other">永久删除 %d 项吗？</item>
+    </plurals>
+    <string name="delete_selected_permanently_message">选定的待办事项及其任务将被永久删除。此操作无法撤销。</string>
     <string name="filter_default">默认</string>
     <string name="due_date">截止日期</string>
     <string name="flag">标记</string>

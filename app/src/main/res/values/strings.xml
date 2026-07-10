@@ -10,6 +10,13 @@
     <string name="delete_permanently">Delete Permanently</string>
     <string name="delete_permanently_title">Permanently delete this todo?</string>
     <string name="delete_permanently_message">This todo and its tasks will be permanently deleted. This action cannot be undone.</string>
+    <string name="restore_selected_todos">Restore selected todos</string>
+    <string name="delete_selected_permanently">Permanently delete selected todos</string>
+    <plurals name="delete_selected_permanently_title">
+        <item quantity="one">Permanently delete %d todo?</item>
+        <item quantity="other">Permanently delete %d todos?</item>
+    </plurals>
+    <string name="delete_selected_permanently_message">The selected todos and their tasks will be permanently deleted. This action cannot be undone.</string>
     <string name="filter_default">Default</string>
     <string name="due_date">Due Date</string>
     <string name="flag">Flag</string>

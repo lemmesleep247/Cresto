@@ -390,27 +390,49 @@ class TodoRepository(
             .forEach { todoDao.softDeleteByIds(it, deletedAt) }
     }
 
-    suspend fun restoreById(id: Int): TodoItem? {
-        val deletedTodo = todoDao.getTodoWithSubTodosByIdIncludingDeletedSnapshot(id)
-            ?.todoItem
-            ?.takeIf { it.deletedAt != null }
-            ?: return null
+    suspend fun restoreById(id: Int): TodoItem? = restoreByIds(listOf(id)).firstOrNull()
 
-        todoDao.restoreByIds(listOf(id))
-        if (deletedTodo.calendarEventId != null) {
-            syncTodoToCalendar(id)
-        } else {
-            syncTodoByIdIfAutoEnabled(id)
+    suspend fun restoreByIds(ids: List<Int>): List<TodoItem> {
+        if (ids.isEmpty()) return emptyList()
+
+        val deletedTodos = ids.distinct()
+            .chunked(SQLITE_BIND_PARAMETER_CHUNK_SIZE)
+            .flatMap { chunk -> todoDao.getTodosWithSubTodosByIdsIncludingDeleted(chunk) }
+            .map { it.todoItem }
+            .filter { it.deletedAt != null }
+        if (deletedTodos.isEmpty()) return emptyList()
+
+        deletedTodos.map { it.id }
+            .chunked(SQLITE_BIND_PARAMETER_CHUNK_SIZE)
+            .forEach { chunk -> todoDao.restoreByIds(chunk) }
+        deletedTodos.forEach { todo ->
+            if (todo.calendarEventId != null) {
+                syncTodoToCalendar(todo.id)
+            } else {
+                syncTodoByIdIfAutoEnabled(todo.id)
+            }
         }
-        return deletedTodo.copy(deletedAt = null)
+        return deletedTodos.map { it.copy(deletedAt = null) }
     }
 
     suspend fun deletePermanentlyById(id: Int) {
-        val todo = todoDao.getTodoWithSubTodosByIdIncludingDeletedSnapshot(id)?.todoItem
-            ?.takeIf { it.deletedAt != null }
-            ?: return
-        deleteCalendarEventIfPresent(todo)
-        todoDao.hardDeleteById(id)
+        deletePermanentlyByIds(listOf(id))
+    }
+
+    suspend fun deletePermanentlyByIds(ids: List<Int>) {
+        if (ids.isEmpty()) return
+
+        val deletedTodos = ids.distinct()
+            .chunked(SQLITE_BIND_PARAMETER_CHUNK_SIZE)
+            .flatMap { chunk -> todoDao.getTodosWithSubTodosByIdsIncludingDeleted(chunk) }
+            .map { it.todoItem }
+            .filter { it.deletedAt != null }
+        if (deletedTodos.isEmpty()) return
+
+        deletedTodos.forEach { deleteCalendarEventIfPresent(it) }
+        deletedTodos.map { it.id }
+            .chunked(SQLITE_BIND_PARAMETER_CHUNK_SIZE)
+            .forEach { chunk -> todoDao.hardDeleteByIds(chunk) }
     }
 
     suspend fun updateCompletedStatusByIds(

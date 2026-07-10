@@ -730,6 +730,27 @@ class TodoViewModel(
         clearSelections()
     }
 
+    fun restoreSelectedItems() {
+        val selectedIds = _selectedItemIds.value.toList()
+        if (selectedIds.isEmpty()) return
+
+        clearSelections()
+        viewModelScope.launch {
+            repository.restoreByIds(selectedIds).forEach(alarmScheduler::schedule)
+        }
+    }
+
+    fun deleteSelectedItemsPermanently() {
+        val selectedIds = _selectedItemIds.value.toList()
+        if (selectedIds.isEmpty()) return
+
+        clearSelections()
+        viewModelScope.launch {
+            alarmScheduler.cancelAll(selectedIds)
+            repository.deletePermanentlyByIds(selectedIds)
+        }
+    }
+
     fun updateHomeGroupFilterFromSheet(filter: HomeGroupFilter) {
         updateHomeGroupFilter(filter)
         _homeGroupSelectionEvents.tryEmit(filter)

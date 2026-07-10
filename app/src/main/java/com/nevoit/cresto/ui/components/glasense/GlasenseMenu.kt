@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -61,9 +60,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.kyant.backdrop.backdrops.LayerBackdrop
-import com.kyant.backdrop.drawPlainBackdrop
+import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.effect
+import com.kyant.backdrop.highlight.Highlight
+import com.kyant.backdrop.highlight.HighlightStyle
+import com.kyant.shapes.RoundedRectangle
 import com.nevoit.cresto.R
 import com.nevoit.cresto.theme.AppColors
 import com.nevoit.cresto.theme.LocalGlasenseSettings
@@ -255,6 +257,7 @@ fun GlasenseMenu(
     }
 
     val darkTheme = isAppInDarkTheme()
+    val liquidGlass = LocalGlasenseSettings.current.liquidGlass
 
     val shadowRadiusPx = with(LocalDensity.current) { 32.dp.toPx() }
     val shadowDyPx = with(LocalDensity.current) { 16.dp.toPx() }
@@ -269,7 +272,7 @@ fun GlasenseMenu(
         alpha = 0.1f
     )
 
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedRectangle(16.dp)
 
     val materialEffect = rememberMaterialRenderEffectOrNull(MaterialRecipes.menu())
 
@@ -351,11 +354,19 @@ fun GlasenseMenu(
                         .graphicsLayer {
                             this.alpha = alphaAni.value
                         }
-                        .background(GlasenseTheme.colors.cardBackground) else if (supportsRuntimeShaderEffect()) Modifier.drawPlainBackdrop(
+                        .background(GlasenseTheme.colors.cardBackground) else if (supportsRuntimeShaderEffect()) Modifier.drawBackdrop(
                         backdrop = backdrop,
-                        shape = { RectangleShape },
+                        shape = { if (liquidGlass) shape else RectangleShape },
                         layerBlock = {
                             this.alpha = alphaAni.value
+                        },
+                        shadow = null,
+                        highlight = {
+                            if (liquidGlass) Highlight.Default.copy(
+                                style = HighlightStyle.Default(
+                                    angle = 90f
+                                )
+                            ) else null
                         },
                         effects = {
                             padding = 50.dp.toPx() * 2
@@ -367,7 +378,7 @@ fun GlasenseMenu(
                             this.alpha = alphaAni.value
                         }
                         .background(GlasenseTheme.colors.cardBackground))
-                .glasenseHighlight(16.dp)
+                .then(if (liquidGlass) Modifier else Modifier.glasenseHighlight(16.dp))
                 .layout { measurable, constraints ->
                     val placeable = measurable.measure(constraints)
                     layout(placeable.width, placeable.height) {
