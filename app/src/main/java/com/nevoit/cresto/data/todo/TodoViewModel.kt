@@ -106,6 +106,13 @@ class TodoViewModel(
         initialValue = emptyList()
     )
 
+    val recentlyDeletedTodos: StateFlow<List<TodoItemWithSubTodos>> =
+        repository.recentlyDeletedTodos.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
     val homeGroups: StateFlow<List<TodoGroup>> = repository.todoGroups.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -119,6 +126,12 @@ class TodoViewModel(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyMap()
         )
+
+    val recentlyDeletedCount: StateFlow<Int> = repository.recentlyDeletedCount.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = 0
+    )
 
     private val _homeGroupFilter = MutableStateFlow<HomeGroupFilter>(HomeGroupFilter.All)
     val homeGroupFilter: StateFlow<HomeGroupFilter> = _homeGroupFilter.asStateFlow()
@@ -395,6 +408,15 @@ class TodoViewModel(
             alarmScheduler.cancel(id)
             repository.deleteById(id)
         }
+    }
+
+    fun restoreById(id: Int) = viewModelScope.launch {
+        repository.restoreById(id)?.let(alarmScheduler::schedule)
+    }
+
+    fun deletePermanentlyById(id: Int) = viewModelScope.launch {
+        alarmScheduler.cancel(id)
+        repository.deletePermanentlyById(id)
     }
 
     // --- SubTodo Operations ---

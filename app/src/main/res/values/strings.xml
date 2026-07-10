@@ -6,6 +6,10 @@
     <string name="settings">Settings</string>
     <string name="cancel">Cancel</string>
     <string name="delete">Delete</string>
+    <string name="restore">Restore</string>
+    <string name="delete_permanently">Delete Permanently</string>
+    <string name="delete_permanently_title">Permanently delete this todo?</string>
+    <string name="delete_permanently_message">This todo and its tasks will be permanently deleted. This action cannot be undone.</string>
     <string name="filter_default">Default</string>
     <string name="due_date">Due Date</string>
     <string name="flag">Flag</string>
@@ -178,14 +182,14 @@
         <item quantity="other">Delete %d todos?</item>
     </plurals>
     <plurals name="delete_todo_dialog_msg">
-        <item quantity="one">This will delete the selected todo permanently. This action cannot be undone.</item>
-        <item quantity="other">This will delete the selected todos permanently. This action cannot be undone.</item>
+        <item quantity="one">The selected todo will be moved to Recently Deleted.</item>
+        <item quantity="other">The selected todos will be moved to Recently Deleted.</item>
     </plurals>
     <plurals name="delete_todo_with_subtasks">
-        <item quantity="one">This will delete current todo and its task permanently. This action cannot be undone.</item>
-        <item quantity="other">This will delete current todo and its tasks permanently. This action cannot be undone.</item>
+        <item quantity="one">This todo and its task will be moved to Recently Deleted.</item>
+        <item quantity="other">This todo and its tasks will be moved to Recently Deleted.</item>
     </plurals>
-    <string name="delete_todo_simple">This will delete current todo permanently. This action cannot be undone.</string>
+    <string name="delete_todo_simple">This todo will be moved to Recently Deleted.</string>
     <string name="add_task">Add task</string>
     <string name="app_icon">App Icon</string>
     <string name="developed_by_nevoit">Developed by Nevoit</string>
@@ -360,6 +364,7 @@
     <string name="insights_empty_trend">No completed todos yet</string>
     <string name="groups">Groups</string>
     <string name="recently_deleted">Recently Deleted</string>
+    <string name="recently_deleted_empty">No recently deleted todos</string>
     <string name="new_group">New Group</string>
     <string name="group">Group</string>
     <string name="rename">Rename</string>

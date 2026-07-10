@@ -48,7 +48,7 @@ import com.nevoit.glasense.theme.tokens.Springs
 @Composable
 fun GlasenseDynamicSmallTitle(
     modifier: Modifier,
-    title: String,
+    title: String? = null,
     textStyle: TextStyle = TextStyle(),
     statusBarHeight: Dp,
     isVisible: Boolean,
@@ -114,20 +114,22 @@ return mix(content.eval(coord) * blurAlpha, tint * tintAlpha, tintIntensity);
     ) {
         content()
 
-        Text(
-            title,
-            style = GlasenseTheme.type.headline.merge(textStyle),
-            maxLines = 1,
-            modifier = Modifier
-                .padding(horizontal = titleHorizontalPadding)
-                .align(Alignment.Center)
-                .graphicsLayer {
-                    this.scaleX = scale.value
-                    this.scaleY = scale.value
-                    this.alpha = textAlpha.value
-                },
-            overflow = TextOverflow.Ellipsis,
-        )
+        if (title != null) {
+            Text(
+                title,
+                style = GlasenseTheme.type.headline.merge(textStyle),
+                maxLines = 1,
+                modifier = Modifier
+                    .padding(horizontal = titleHorizontalPadding)
+                    .align(Alignment.Center)
+                    .graphicsLayer {
+                        this.scaleX = scale.value
+                        this.scaleY = scale.value
+                        this.alpha = textAlpha.value
+                    },
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 

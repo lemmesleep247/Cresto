@@ -70,6 +70,7 @@ import com.nevoit.cresto.data.todo.calendar.TodoCalendarSyncManager
 import com.nevoit.cresto.feature.bottomsheet.BottomSheet
 import com.nevoit.cresto.feature.calendar.toToastMessage
 import com.nevoit.cresto.feature.group.GroupBottomSheet
+import com.nevoit.cresto.feature.recentlydeleted.RecentlyDeletedActivity
 import com.nevoit.cresto.feature.screenextract.ScreenExtractEvents
 import com.nevoit.cresto.feature.settings.update.UpdateBottomSheet
 import com.nevoit.cresto.feature.settings.update.UpdateCheckResult
@@ -248,6 +249,7 @@ fun MainScreen() {
     val bottomSheetState by viewModel.bottomSheetState.collectAsState()
     val homeGroups by viewModel.homeGroups.collectAsState()
     val homeGroupTodoCounts by viewModel.homeGroupTodoCounts.collectAsState()
+    val recentlyDeletedCount by viewModel.recentlyDeletedCount.collectAsState()
     val selectedHomeGroupFilter by viewModel.homeGroupFilter.collectAsState()
 
     var isDatePickerVisible by remember { mutableStateOf(false) }
@@ -302,7 +304,6 @@ fun MainScreen() {
         id = R.plurals.delete_todo_dialog_msg,
         count = selectedItemCount
     )
-
     val scope = rememberCoroutineScope()
 
     var isComposed by remember { mutableStateOf(isSelectionModeActive) }
@@ -703,11 +704,15 @@ fun MainScreen() {
                 GroupBottomSheet(
                     groups = homeGroups,
                     groupTodoCounts = homeGroupTodoCounts,
+                    recentlyDeletedCount = recentlyDeletedCount,
                     selectedFilter = selectedHomeGroupFilter,
                     onFilterSelected = viewModel::updateHomeGroupFilterFromSheet,
                     onCreateGroup = { name -> viewModel.createTodoGroup(name) },
                     onRenameGroup = viewModel::updateTodoGroup,
                     onDeleteGroup = viewModel::deleteTodoGroup,
+                    onOpenRecentlyDeleted = {
+                        context.startActivity(RecentlyDeletedActivity.createIntent(context))
+                    },
                     onDismissed = { isGroupBottomSheetVisible = false }
                 )
             }

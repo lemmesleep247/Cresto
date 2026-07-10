@@ -77,11 +77,13 @@ import androidx.compose.animation.Animatable as ColorAnimatable
 fun GroupBottomSheet(
     groups: List<TodoGroup>,
     groupTodoCounts: Map<Int?, Int>,
+    recentlyDeletedCount: Int = 0,
     selectedFilter: HomeGroupFilter,
     onFilterSelected: (HomeGroupFilter) -> Unit,
     onCreateGroup: (String) -> Unit,
     onRenameGroup: (TodoGroup) -> Unit,
     onDeleteGroup: (TodoGroup) -> Unit,
+    onOpenRecentlyDeleted: () -> Unit = {},
     onDismissed: () -> Unit,
     showAllFilter: Boolean = true,
     showRecentlyDeleted: Boolean = true
@@ -210,8 +212,11 @@ fun GroupBottomSheet(
                     GroupRow(
                         modifier = Modifier.animateItem(placementSpec = Springs.crisp()),
                         title = stringResource(R.string.recently_deleted),
+                        trailingText = recentlyDeletedCount.toString(),
                         iconType = FolderRowIconType.TRASH,
-                        onClick = {})
+                        onClick = {
+                            onOpenRecentlyDeleted()
+                        })
                     VGap(8.dp)
                 }
             }
@@ -413,7 +418,7 @@ fun ListScope.GroupRow(
             .padding(horizontal = horizontalPadding)
             .fillMaxWidth(),
         listState = swipeableState,
-        actions = actions,
+        rightActions = actions,
         onAction = { index ->
             when (index) {
                 0 -> onDelete()
@@ -477,12 +482,14 @@ fun ListScope.GroupRow(
                                     }
                                     true
                                 }
+
                                 Key.Escape -> {
                                     if (event.type == KeyEventType.KeyUp) {
                                         onCancelRename()
                                     }
                                     true
                                 }
+
                                 else -> false
                             }
                         },

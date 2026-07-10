@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.delete
 import androidx.compose.foundation.text.input.rememberTextFieldState
@@ -81,6 +82,7 @@ import com.nevoit.cresto.ui.components.glasense.extend.LineThroughText
 import com.nevoit.glasense.core.component.Icon
 import com.nevoit.glasense.core.component.Text
 import com.nevoit.glasense.theme.GlasenseTheme
+import com.nevoit.glasense.theme.tokens.Springs
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
 import java.time.LocalDate
@@ -109,6 +111,7 @@ fun TodoItemRow(
     onCheckboxTapPosition: (Offset) -> Unit = {},
     modifier: Modifier,
     backgroundColor: Color,
+    checkboxEnabled: Boolean = true,
 ) {
     val completedTaskCount = remember(item.subTodos) { item.subTodos.count { it.isCompleted } }
     val totalTaskCount = item.subTodos.size
@@ -145,6 +148,7 @@ fun TodoItemRow(
         GlasenseCheckbox(
             checked = itemTodo.isCompleted,
             onCheckedChange = onCheckedChange,
+            enabled = checkboxEnabled,
             onTapPosition = onCheckboxTapPosition
         )
         Spacer(modifier = Modifier.width(12.dp))
@@ -645,7 +649,8 @@ fun SwipeableTodoItem(
     onDelete: () -> Unit,
     modifier: Modifier,
     onCheckedChange: (Boolean) -> Unit,
-    onCheckboxTapPosition: (Offset) -> Unit = {}
+    onCheckboxTapPosition: (Offset) -> Unit = {},
+    checkboxEnabled: Boolean = true
 ) {
     val actions = persistentListOf(
         SwipeableActionButton(
@@ -662,7 +667,7 @@ fun SwipeableTodoItem(
         key = item.todoItem.id,
         listState = listState,
         modifier = Modifier,
-        actions = actions,
+        rightActions = actions,
         onAction = { index ->
             when (index) {
                 0 -> onDelete()
@@ -677,7 +682,67 @@ fun SwipeableTodoItem(
             isOverdueMarkerEnabled = isOverdueMarkerEnabled,
             onCheckedChange = onCheckedChange,
             onCheckboxTapPosition = onCheckboxTapPosition,
-            modifier = modifier
+            modifier = modifier,
+            checkboxEnabled = checkboxEnabled
+        )
+    }
+}
+
+@Composable
+fun LazyItemScope.SwipeableRecentlyDeletedTodoItem(
+    modifier: Modifier = Modifier,
+    listState: SwipeableListState,
+    item: TodoItemWithSubTodos,
+    backgroundColor: Color = AppColors.cardBackground,
+    showDate: Boolean,
+    isDueTodayMarkerEnabled: Boolean,
+    isOverdueMarkerEnabled: Boolean,
+    onRestore: () -> Unit,
+    onDeletePermanently: () -> Unit
+) {
+    val leftActions = persistentListOf(
+        SwipeableActionButton(
+            index = 0,
+            color = AppColors.primary,
+            iconColor = AppColors.onPrimary,
+            icon = painterResource(id = R.drawable.ic_arrow_counterclockwise),
+            contentDescription = stringResource(R.string.restore),
+            triggerOnDeepSwipe = true
+        )
+    )
+    val rightActions = persistentListOf(
+        SwipeableActionButton(
+            index = 1,
+            color = AppColors.error,
+            iconColor = AppColors.onError,
+            icon = painterResource(id = R.drawable.ic_trash),
+            contentDescription = stringResource(R.string.delete_permanently),
+            triggerOnDeepSwipe = true
+        )
+    )
+
+    GlasenseSwipeable(
+        modifier = Modifier.animateItem(placementSpec = Springs.crisp()),
+        key = item.todoItem.id,
+        listState = listState,
+        leftActions = leftActions,
+        rightActions = rightActions,
+        onAction = { index ->
+            when (index) {
+                0 -> onRestore()
+                1 -> onDeletePermanently()
+            }
+        }
+    ) {
+        TodoItemRow(
+            item = item,
+            showDate = showDate,
+            backgroundColor = backgroundColor,
+            isDueTodayMarkerEnabled = isDueTodayMarkerEnabled,
+            isOverdueMarkerEnabled = isOverdueMarkerEnabled,
+            onCheckedChange = {},
+            modifier = modifier,
+            checkboxEnabled = false
         )
     }
 }
@@ -1071,7 +1136,7 @@ fun SwipeableSubTodoItemRowEditable(
         key = subTodo.id,
         listState = listState,
         modifier = modifier,
-        actions = actions,
+        rightActions = actions,
         onAction = { index ->
             when (index) {
                 0 -> onPromote()

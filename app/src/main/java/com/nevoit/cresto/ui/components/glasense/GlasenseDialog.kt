@@ -332,14 +332,14 @@ fun GlasenseDialog(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                     }
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        dialogState.items.forEach { item ->
+                        dialogState.items.asReversed().forEach { item ->
                             GlasenseDialogButton(
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.fillMaxWidth(),
                                 text = item.text,
                                 icon = item.icon,
                                 isDestructive = item.isDestructive,
