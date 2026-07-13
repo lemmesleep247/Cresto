@@ -10,6 +10,47 @@ enum class TodoListType {
     COMPLETED
 }
 
+data class HomeTodoSections(
+    val pinned: List<TodoItemWithSubTodos>,
+    val incomplete: List<TodoItemWithSubTodos>,
+    val complete: List<TodoItemWithSubTodos>
+)
+
+fun buildHomeTodoSections(
+    list: List<TodoItemWithSubTodos>,
+    option: SortOption,
+    order: SortOrder
+): HomeTodoSections {
+    val pinned = sortTodos(
+        list = list.filter { it.todoItem.isPinned && !it.todoItem.isCompleted },
+        option = option,
+        order = order,
+        type = TodoListType.INCOMPLETED
+    ) + sortTodos(
+        list = list.filter { it.todoItem.isPinned && it.todoItem.isCompleted },
+        option = option,
+        order = order,
+        type = TodoListType.COMPLETED
+    )
+    val incomplete = sortTodos(
+        list = list.filter { !it.todoItem.isPinned && !it.todoItem.isCompleted },
+        option = option,
+        order = order,
+        type = TodoListType.INCOMPLETED
+    )
+    val complete = sortTodos(
+        list = list.filter { !it.todoItem.isPinned && it.todoItem.isCompleted },
+        option = option,
+        order = order,
+        type = TodoListType.COMPLETED
+    )
+    return HomeTodoSections(
+        pinned = pinned,
+        incomplete = incomplete,
+        complete = complete
+    )
+}
+
 fun sortTodos(
     list: List<TodoItemWithSubTodos>,
     option: SortOption,

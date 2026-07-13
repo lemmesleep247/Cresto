@@ -6,11 +6,25 @@
     <string name="settings">设置</string>
     <string name="cancel">取消</string>
     <string name="delete">删除</string>
+    <string name="restore">恢复</string>
+    <string name="delete_permanently">永久删除</string>
+    <string name="delete_permanently_title">永久删除此待办事项？</string>
+    <string name="delete_permanently_message">此待办事项及其任务将被永久删除。此操作无法撤销。</string>
+    <string name="restore_selected_todos">恢复选定的待办事项</string>
+    <string name="delete_selected_permanently">永久删除选定的待办事项</string>
+    <plurals name="delete_selected_permanently_title">
+        <item quantity="other">永久删除 %d 项吗？</item>
+    </plurals>
+    <string name="delete_selected_permanently_message">选定的待办事项及其任务将被永久删除。此操作无法撤销。</string>
     <string name="filter_default">默认</string>
     <string name="due_date">截止日期</string>
     <string name="flag">标记</string>
     <string name="title">标题</string>
     <string name="completed">已完成</string>
+    <string name="incomplete">未完成</string>
+    <string name="pinned">置顶</string>
+    <string name="pin">置顶</string>
+    <string name="unpin">取消置顶</string>
     <string name="expand">展开</string>
     <string name="selected_todos">已选择 %1$d 项</string>
     <string name="search_all_todos">在全部待办事项中搜索</string>
@@ -22,7 +36,7 @@
         <item quantity="other">删除 %d 项吗？</item>
     </plurals>
     <plurals name="delete_todo_dialog_msg">
-        <item quantity="other">将永久删除选定的待办事项。此操作无法撤消。</item>
+        <item quantity="other">选定的待办事项将移至“最近删除”。</item>
     </plurals>
     <string name="appearance">外观</string>
     <string name="data_storage">数据与存储</string>
@@ -164,9 +178,9 @@
     <string name="detail">详细信息</string>
     <string name="created">创建于 %1$s</string>
     <string name="delete_current_todo">删除当前待办事项?</string>
-    <string name="delete_todo_simple">此操作将永久删除当前待办事项。此操作无法撤销。</string>
+    <string name="delete_todo_simple">此待办事项将移至“最近删除”。</string>
     <plurals name="delete_todo_with_subtasks">
-        <item quantity="other">此操作将永久删除当前待办事项及其任务。此操作无法撤销。</item>
+        <item quantity="other">此待办事项及其任务将移至“最近删除”。</item>
     </plurals>
     <string name="just_now">刚刚</string>
     <string name="yesterday">昨天</string>
@@ -350,7 +364,15 @@
     <string name="insights_empty_trend">还没有完成记录</string>
     <string name="groups">分组</string>
     <string name="recently_deleted">最近删除</string>
+    <plurals name="recently_deleted_item_count">
+        <item quantity="other">共 %d 项</item>
+    </plurals>
+    <plurals name="recently_deleted_days_remaining">
+        <item quantity="other">%d 天</item>
+    </plurals>
+    <string name="recently_deleted_empty">没有最近删除的待办事项</string>
     <string name="new_group">新建组</string>
     <string name="group">分组</string>
     <string name="rename">重命名</string>
+    <string name="recently_deleted_tip">已删除的待办将在 “最近删除” 中保留 30 天，之后自动永久删除。</string>
 </resources>

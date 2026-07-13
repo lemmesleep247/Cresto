@@ -71,9 +71,26 @@ val MIGRATION_27_28 = object : Migration(27, 28) {
     }
 }
 
+val MIGRATION_28_29 = object : Migration(28, 29) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE todo_items ADD COLUMN deletedAt TEXT")
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_todo_items_deletedAt` ON `todo_items` (`deletedAt`)"
+        )
+    }
+}
+
+val MIGRATION_29_30 = object : Migration(29, 30) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "ALTER TABLE todo_items ADD COLUMN isPinned INTEGER NOT NULL DEFAULT 0"
+        )
+    }
+}
+
 @Database(
     entities = [TodoItem::class, SubTodoItem::class, RepeatRule::class, TodoGroup::class],
-    version = 28,
+    version = 30,
     exportSchema = true
 )
 

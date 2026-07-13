@@ -6,9 +6,9 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.RenderEffect as ComposeRenderEffect
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import com.nevoit.cresto.util.supportsRuntimeShaderEffect
+import androidx.compose.ui.graphics.RenderEffect as ComposeRenderEffect
 
 @Composable
 fun rememberMaterialRenderEffectOrNull(recipe: MaterialRecipe): ComposeRenderEffect? {
@@ -38,6 +38,7 @@ fun MaterialRecipe.toRenderEffect(): ComposeRenderEffect {
     shader.setFloatUniform("mapIntensity", luminanceMapIntensity)
     shader.setFloatUniform("saturation", saturation)
     shader.setFloatUniform("brightness", extraBrightness)
+    shader.setFloatUniform("ditherStrength", 1.0f)
 
     return RenderEffect.createRuntimeShaderEffect(
         shader,

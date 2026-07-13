@@ -166,7 +166,7 @@ fun GlasenseDialog(
     val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
 
-    val materialEffect = rememberMaterialRenderEffectOrNull(MaterialRecipes.regular())
+    val materialEffect = rememberMaterialRenderEffectOrNull(MaterialRecipes.thin())
 
     if (dialogState.isVisible) {
         var isReady by remember { mutableStateOf(true) }
@@ -270,7 +270,7 @@ fun GlasenseDialog(
                                         16.dp.toPx(),
                                         TileMode.Mirror
                                     )
-                                    lens(24f.dp.toPx(), 48f.dp.toPx(), depthEffect = true)
+                                    lens(48f.dp.toPx(), 48f.dp.toPx())
                                 }
                             },
                             highlight = {
@@ -332,14 +332,14 @@ fun GlasenseDialog(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                     }
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        dialogState.items.forEach { item ->
+                        dialogState.items.asReversed().forEach { item ->
                             GlasenseDialogButton(
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.fillMaxWidth(),
                                 text = item.text,
                                 icon = item.icon,
                                 isDestructive = item.isDestructive,

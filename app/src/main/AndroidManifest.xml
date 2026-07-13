@@ -133,6 +133,12 @@
             android:theme="@style/Theme.Cresto"
             android:windowSoftInputMode="adjustNothing" />
         <activity
+            android:name=".feature.recentlydeleted.RecentlyDeletedActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity"
+            android:theme="@style/Theme.Cresto"
+            android:windowSoftInputMode="adjustNothing" />
+        <activity
             android:name=".feature.guide.GuideActivity"
             android:exported="false"
             android:parentActivityName=".MainActivity"

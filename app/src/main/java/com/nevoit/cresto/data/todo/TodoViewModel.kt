@@ -106,6 +106,13 @@ class TodoViewModel(
         initialValue = emptyList()
     )
 
+    val recentlyDeletedTodos: StateFlow<List<TodoItemWithSubTodos>> =
+        repository.recentlyDeletedTodos.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
     val homeGroups: StateFlow<List<TodoGroup>> = repository.todoGroups.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -119,6 +126,12 @@ class TodoViewModel(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyMap()
         )
+
+    val recentlyDeletedCount: StateFlow<Int> = repository.recentlyDeletedCount.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = 0
+    )
 
     private val _homeGroupFilter = MutableStateFlow<HomeGroupFilter>(HomeGroupFilter.All)
     val homeGroupFilter: StateFlow<HomeGroupFilter> = _homeGroupFilter.asStateFlow()
@@ -385,6 +398,10 @@ class TodoViewModel(
         repository.updateRepeatRuleForTodo(item, config)
     }
 
+    fun updatePinned(id: Int, isPinned: Boolean) = viewModelScope.launch {
+        repository.updatePinned(id, isPinned)
+    }
+
     fun delete(item: TodoItem) = viewModelScope.launch {
         alarmScheduler.cancel(item)
         repository.delete(item)
@@ -395,6 +412,15 @@ class TodoViewModel(
             alarmScheduler.cancel(id)
             repository.deleteById(id)
         }
+    }
+
+    fun restoreById(id: Int) = viewModelScope.launch {
+        repository.restoreById(id)?.let(alarmScheduler::schedule)
+    }
+
+    fun deletePermanentlyById(id: Int) = viewModelScope.launch {
+        alarmScheduler.cancel(id)
+        repository.deletePermanentlyById(id)
     }
 
     // --- SubTodo Operations ---
@@ -706,6 +732,27 @@ class TodoViewModel(
         if (_homeGroupFilter.value == filter) return
         _homeGroupFilter.value = filter
         clearSelections()
+    }
+
+    fun restoreSelectedItems() {
+        val selectedIds = _selectedItemIds.value.toList()
+        if (selectedIds.isEmpty()) return
+
+        clearSelections()
+        viewModelScope.launch {
+            repository.restoreByIds(selectedIds).forEach(alarmScheduler::schedule)
+        }
+    }
+
+    fun deleteSelectedItemsPermanently() {
+        val selectedIds = _selectedItemIds.value.toList()
+        if (selectedIds.isEmpty()) return
+
+        clearSelections()
+        viewModelScope.launch {
+            alarmScheduler.cancelAll(selectedIds)
+            repository.deletePermanentlyByIds(selectedIds)
+        }
     }
 
     fun updateHomeGroupFilterFromSheet(filter: HomeGroupFilter) {

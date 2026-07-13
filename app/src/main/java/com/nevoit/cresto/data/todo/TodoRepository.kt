@@ -52,9 +52,14 @@ class TodoRepository(
 
     val allTodos: Flow<List<TodoItemWithSubTodos>> = todoDao.getAllTodosWithSubTodos()
 
+    val recentlyDeletedTodos: Flow<List<TodoItemWithSubTodos>> =
+        todoDao.getRecentlyDeletedTodosWithSubTodos()
+
     val todoGroups: Flow<List<TodoGroup>> = todoDao.getTodoGroups()
 
     val todoGroupCounts: Flow<List<TodoGroupCount>> = todoDao.getTodoGroupCounts()
+
+    val recentlyDeletedCount: Flow<Int> = todoDao.getRecentlyDeletedCount()
 
     suspend fun createTodoGroup(name: String, color: Int = 0): Long = todoDatabase.withTransaction {
         val normalizedName = name.trim()
@@ -156,16 +161,21 @@ class TodoRepository(
     }
 
     suspend fun update(item: TodoItem) {
-        val existingCalendarState = todoDao.getTodoWithSubTodosByIdSnapshot(item.id)?.todoItem
-        val occurrenceWasEdited = existingCalendarState?.generatedFromTodoId != null &&
+        val existingCalendarState =
+            todoDao.getTodoWithSubTodosByIdIncludingDeletedSnapshot(item.id)?.todoItem ?: return
+        if (existingCalendarState.deletedAt != null) return
+
+        val occurrenceWasEdited = existingCalendarState.generatedFromTodoId != null &&
                 existingCalendarState.userEditableSignature() != item.userEditableSignature()
         val itemToPersist = item.copy(
-            calendarEventId = item.calendarEventId ?: existingCalendarState?.calendarEventId,
-            calendarSyncedAt = item.calendarSyncedAt ?: existingCalendarState?.calendarSyncedAt,
+            isPinned = existingCalendarState.isPinned,
+            deletedAt = existingCalendarState.deletedAt,
+            calendarEventId = item.calendarEventId ?: existingCalendarState.calendarEventId,
+            calendarSyncedAt = item.calendarSyncedAt ?: existingCalendarState.calendarSyncedAt,
             occurrenceEditedAt = when {
                 item.occurrenceEditedAt != null -> item.occurrenceEditedAt
                 occurrenceWasEdited -> LocalDateTime.now()
-                else -> existingCalendarState?.occurrenceEditedAt
+                else -> existingCalendarState.occurrenceEditedAt
             }
         )
         todoDao.updateTodo(itemToPersist)
@@ -173,6 +183,10 @@ class TodoRepository(
     }
 
     suspend fun updateRepeatRuleForTodo(item: TodoItem, config: RepeatRuleConfig?) {
+        val persistedItem =
+            todoDao.getTodoWithSubTodosByIdIncludingDeletedSnapshot(item.id)?.todoItem ?: return
+        if (persistedItem.deletedAt != null) return
+
         val updatedItem = todoDatabase.withTransaction {
             val existingRuleId = item.repeatRuleId
             if (config == null) {
@@ -261,8 +275,7 @@ class TodoRepository(
     }
 
     suspend fun delete(item: TodoItem) {
-        deleteCalendarEventIfPresent(item)
-        todoDao.deleteTodo(item)
+        softDeleteByIds(listOf(item.id))
     }
 
     suspend fun insertSubTodo(item: SubTodoItem) {
@@ -357,16 +370,81 @@ class TodoRepository(
     }
 
     suspend fun deleteById(id: Int) {
-        todoDao.getTodoWithSubTodosByIdSnapshot(id)
-            ?.let { deleteCalendarEventIfPresent(it.todoItem) }
-        todoDao.deleteById(id)
+        softDeleteByIds(listOf(id))
     }
 
     suspend fun deleteByIds(ids: List<Int>) {
-        getTodosWithSubTodosByIds(ids)
+        softDeleteByIds(ids)
+    }
+
+    private suspend fun softDeleteByIds(ids: List<Int>) {
+        if (ids.isEmpty()) return
+
+        val todos = getTodosWithSubTodosByIds(ids)
             .map { it.todoItem }
-            .forEach { deleteCalendarEventIfPresent(it) }
-        ids.chunked(SQLITE_BIND_PARAMETER_CHUNK_SIZE).forEach { todoDao.deleteByIds(it) }
+        if (todos.isEmpty()) return
+
+        todos.forEach { deleteCalendarEventIfPresent(it) }
+        val deletedAt = LocalDateTime.now()
+        todos.map { it.id }
+            .chunked(SQLITE_BIND_PARAMETER_CHUNK_SIZE)
+            .forEach { todoDao.softDeleteByIds(it, deletedAt) }
+    }
+
+    suspend fun restoreById(id: Int): TodoItem? = restoreByIds(listOf(id)).firstOrNull()
+
+    suspend fun restoreByIds(ids: List<Int>): List<TodoItem> {
+        if (ids.isEmpty()) return emptyList()
+
+        val deletedTodos = ids.distinct()
+            .chunked(SQLITE_BIND_PARAMETER_CHUNK_SIZE)
+            .flatMap { chunk -> todoDao.getTodosWithSubTodosByIdsIncludingDeleted(chunk) }
+            .map { it.todoItem }
+            .filter { it.deletedAt != null }
+        if (deletedTodos.isEmpty()) return emptyList()
+
+        deletedTodos.map { it.id }
+            .chunked(SQLITE_BIND_PARAMETER_CHUNK_SIZE)
+            .forEach { chunk -> todoDao.restoreByIds(chunk) }
+        deletedTodos.forEach { todo ->
+            if (todo.calendarEventId != null) {
+                syncTodoToCalendar(todo.id)
+            } else {
+                syncTodoByIdIfAutoEnabled(todo.id)
+            }
+        }
+        return deletedTodos.map { it.copy(deletedAt = null) }
+    }
+
+    suspend fun deletePermanentlyById(id: Int) {
+        deletePermanentlyByIds(listOf(id))
+    }
+
+    suspend fun deletePermanentlyByIds(ids: List<Int>) {
+        if (ids.isEmpty()) return
+
+        val deletedTodos = ids.distinct()
+            .chunked(SQLITE_BIND_PARAMETER_CHUNK_SIZE)
+            .flatMap { chunk -> todoDao.getTodosWithSubTodosByIdsIncludingDeleted(chunk) }
+            .map { it.todoItem }
+            .filter { it.deletedAt != null }
+        if (deletedTodos.isEmpty()) return
+
+        deletedTodos.forEach { deleteCalendarEventIfPresent(it) }
+        deletedTodos.map { it.id }
+            .chunked(SQLITE_BIND_PARAMETER_CHUNK_SIZE)
+            .forEach { chunk -> todoDao.hardDeleteByIds(chunk) }
+    }
+
+    suspend fun deleteExpiredRecentlyDeleted(now: LocalDateTime = LocalDateTime.now()): Int {
+        val cutoff = now.minusDays(RECENTLY_DELETED_RETENTION_DAYS)
+        val expiredTodos = todoDao.getRecentlyDeletedAtOrBefore(cutoff)
+        if (expiredTodos.isEmpty()) return 0
+
+        expiredTodos.forEach { deleteCalendarEventIfPresent(it) }
+        return expiredTodos.map { it.id }
+            .chunked(SQLITE_BIND_PARAMETER_CHUNK_SIZE)
+            .sumOf { ids -> todoDao.hardDeleteRecentlyDeletedByIds(ids, cutoff) }
     }
 
     suspend fun updateCompletedStatusByIds(
@@ -436,6 +514,10 @@ class TodoRepository(
             .sumOf { chunk -> todoDao.getCompletedCountByIds(chunk) }
     }
 
+    suspend fun updatePinned(id: Int, isPinned: Boolean) {
+        todoDao.updatePinned(id, isPinned)
+    }
+
     suspend fun updateFlagByIds(ids: List<Int>, flag: Int) {
         val editedAt = LocalDateTime.now()
         ids.chunked(SQLITE_BIND_PARAMETER_CHUNK_SIZE).forEach { chunk ->
@@ -465,6 +547,7 @@ class TodoRepository(
                     id = 0,
                     creationDateTime = now.plusNanos(index * 1000000L),
                     isCompleted = false,
+                    isPinned = false,
                     completedDateTime = null,
                     calendarEventId = null,
                     calendarSyncedAt = null,
@@ -555,7 +638,7 @@ class TodoRepository(
 
             orderedSourceTodos.map { it.todoItem.id }
                 .chunked(SQLITE_BIND_PARAMETER_CHUNK_SIZE)
-                .forEach { todoDao.deleteByIds(it) }
+                .forEach { todoDao.hardDeleteByIds(it) }
 
             mergedSubTodos.size
         }
@@ -698,7 +781,7 @@ class TodoRepository(
 
         val generatedTodo = todoDao.getGeneratedTodoFromSnapshot(todo.id) ?: return
         if (!generatedTodo.canDeleteOnReopen()) return
-        todoDao.deleteById(generatedTodo.id)
+        todoDao.hardDeleteById(generatedTodo.id)
         result.deletedTodos += generatedTodo
     }
 
@@ -754,7 +837,7 @@ class TodoRepository(
         val groups = todoDao.getAllTodoGroupsSnapshot()
 
         val backup = TodoBackupFile(
-            schemaVersion = 4,
+            schemaVersion = 6,
             exportedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
             todos = todos.map {
                 TodoBackupDto(
@@ -763,6 +846,7 @@ class TodoRepository(
                     dueDate = it.dueDate?.toString(),
                     creationDateTime = it.creationDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
                     isCompleted = it.isCompleted,
+                    isPinned = it.isPinned,
                     flag = it.flag,
                     completedDateTime = it.completedDateTime?.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
                     startTime = it.startTime?.format(DateTimeFormatter.ISO_LOCAL_TIME),
@@ -778,7 +862,8 @@ class TodoRepository(
                     occurrenceDate = it.occurrenceDate?.toString(),
                     generatedFromTodoId = it.generatedFromTodoId,
                     occurrenceEditedAt = it.occurrenceEditedAt?.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
-                    groupId = it.groupId
+                    groupId = it.groupId,
+                    deletedAt = it.deletedAt?.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
                 )
             },
             subTodos = subTodos.map {
@@ -871,6 +956,7 @@ class TodoRepository(
                     dueDate = todoDto.dueDate?.let(LocalDate::parse),
                     creationDateTime = LocalDateTime.parse(todoDto.creationDateTime),
                     isCompleted = todoDto.isCompleted,
+                    isPinned = todoDto.isPinned,
                     flag = todoDto.flag,
                     completedDateTime = todoDto.completedDateTime?.let(LocalDateTime::parse),
                     startTime = todoDto.startTime?.let(LocalTime::parse),
@@ -886,7 +972,8 @@ class TodoRepository(
                     occurrenceDate = todoDto.occurrenceDate?.let(LocalDate::parse),
                     generatedFromTodoId = todoDto.generatedFromTodoId?.let(todoIdMap::get),
                     occurrenceEditedAt = todoDto.occurrenceEditedAt?.let(LocalDateTime::parse),
-                    groupId = mappedGroupId
+                    groupId = mappedGroupId,
+                    deletedAt = todoDto.deletedAt?.let(LocalDateTime::parse)
                 )
             ).toInt()
             importedTodoIds += newTodoId
@@ -1164,6 +1251,7 @@ class TodoRepository(
     }
 
     private companion object {
+        private const val RECENTLY_DELETED_RETENTION_DAYS = 30L
         private const val SQLITE_BIND_PARAMETER_CHUNK_SIZE = 900
     }
 }

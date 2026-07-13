@@ -38,9 +38,9 @@ interface TodoDao {
     @Update
     suspend fun updateRepeatRule(rule: RepeatRule)
 
-    // Deletes a todo item from the table.
+    // Permanently deletes a todo item from the table.
     @Delete
-    suspend fun deleteTodo(item: TodoItem)
+    suspend fun hardDeleteTodo(item: TodoItem)
 
     // Deletes all todo items from the table.
     @Query("DELETE FROM todo_items")
@@ -79,8 +79,11 @@ interface TodoDao {
     @Query("UPDATE todo_items SET groupId = NULL WHERE groupId = :groupId")
     suspend fun clearTodoGroupId(groupId: Int)
 
-    @Query("SELECT groupId, COUNT(*) AS count FROM todo_items GROUP BY groupId")
+    @Query("SELECT groupId, COUNT(*) AS count FROM todo_items WHERE deletedAt IS NULL GROUP BY groupId")
     fun getTodoGroupCounts(): Flow<List<TodoGroupCount>>
+
+    @Query("SELECT COUNT(*) FROM todo_items WHERE deletedAt IS NOT NULL")
+    fun getRecentlyDeletedCount(): Flow<Int>
 
     // --- New operations for SubTodoItem ---
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -96,36 +99,48 @@ interface TodoDao {
 
     // Fetches all todo items with their sub-todos, ordered by ID in descending order.
     @Transaction
-    @Query("SELECT * FROM todo_items ORDER BY id DESC")
+    @Query("SELECT * FROM todo_items WHERE deletedAt IS NULL ORDER BY id DESC")
     fun getAllTodosWithSubTodos(): Flow<List<TodoItemWithSubTodos>>
+
+    @Transaction
+    @Query("SELECT * FROM todo_items WHERE deletedAt IS NOT NULL ORDER BY deletedAt DESC, id DESC")
+    fun getRecentlyDeletedTodosWithSubTodos(): Flow<List<TodoItemWithSubTodos>>
 
     // Fetches all todo items with their sub-todos, ordered by due date.
     @Transaction
-    @Query("SELECT * FROM todo_items ORDER BY dueDate IS NULL, dueDate ASC")
+    @Query("SELECT * FROM todo_items WHERE deletedAt IS NULL ORDER BY dueDate IS NULL, dueDate ASC")
     fun getAllTodosWithSubTodosSortedByDueDate(): Flow<List<TodoItemWithSubTodos>>
 
     @Transaction
-    @Query("SELECT * FROM todo_items WHERE dueDate = :date ORDER BY creationDateTime DESC")
+    @Query("SELECT * FROM todo_items WHERE dueDate = :date AND deletedAt IS NULL ORDER BY creationDateTime DESC")
     fun getTodosByDate(date: LocalDate): Flow<List<TodoItemWithSubTodos>>
 
-    @Query("SELECT DISTINCT dueDate FROM todo_items WHERE dueDate IS NOT NULL")
+    @Query("SELECT DISTINCT dueDate FROM todo_items WHERE dueDate IS NOT NULL AND deletedAt IS NULL")
     fun getDatesWithTodo(): Flow<List<LocalDate>>
 
     // Fetches a single todo item with its sub-todos by ID.
     @Transaction
-    @Query("SELECT * FROM todo_items WHERE id = :id")
+    @Query("SELECT * FROM todo_items WHERE id = :id AND deletedAt IS NULL")
     fun getTodoWithSubTodosById(id: Int): Flow<TodoItemWithSubTodos?>
 
     @Transaction
-    @Query("SELECT * FROM todo_items WHERE id = :id")
+    @Query("SELECT * FROM todo_items WHERE id = :id AND deletedAt IS NULL")
     suspend fun getTodoWithSubTodosByIdSnapshot(id: Int): TodoItemWithSubTodos?
 
     @Transaction
-    @Query("SELECT * FROM todo_items WHERE id IN (:ids)")
+    @Query("SELECT * FROM todo_items WHERE id = :id")
+    suspend fun getTodoWithSubTodosByIdIncludingDeletedSnapshot(id: Int): TodoItemWithSubTodos?
+
+    @Transaction
+    @Query("SELECT * FROM todo_items WHERE id IN (:ids) AND deletedAt IS NULL")
     suspend fun getTodosWithSubTodosByIds(ids: List<Int>): List<TodoItemWithSubTodos>
 
     @Transaction
     @Query("SELECT * FROM todo_items WHERE id IN (:ids)")
+    suspend fun getTodosWithSubTodosByIdsIncludingDeleted(ids: List<Int>): List<TodoItemWithSubTodos>
+
+    @Transaction
+    @Query("SELECT * FROM todo_items WHERE id IN (:ids) AND deletedAt IS NULL")
     fun getTodosWithSubTodosByIdsFlow(ids: List<Int>): Flow<List<TodoItemWithSubTodos>>
 
     @Query("SELECT * FROM repeat_rules WHERE id = :id")
@@ -146,21 +161,53 @@ interface TodoDao {
     @Query("SELECT COUNT(*) FROM todo_items WHERE seriesId = :seriesId")
     suspend fun countTodosBySeriesIdSnapshot(seriesId: String): Int
 
-    @Query("SELECT * FROM todo_items WHERE generatedFromTodoId = :todoId ORDER BY occurrenceDate ASC LIMIT 1")
+    @Query("SELECT * FROM todo_items WHERE generatedFromTodoId = :todoId AND deletedAt IS NULL ORDER BY occurrenceDate ASC LIMIT 1")
     suspend fun getGeneratedTodoFromSnapshot(todoId: Int): TodoItem?
 
     @Query("DELETE FROM todo_items WHERE id = :id")
-    suspend fun deleteById(id: Int)
+    suspend fun hardDeleteById(id: Int)
 
     @Query("DELETE FROM todo_items WHERE id IN (:ids)")
-    suspend fun deleteByIds(ids: List<Int>)
+    suspend fun hardDeleteByIds(ids: List<Int>)
+
+    @Query(
+        """
+        UPDATE todo_items
+        SET deletedAt = :deletedAt
+        WHERE id IN (:ids) AND deletedAt IS NULL
+        """
+    )
+    suspend fun softDeleteByIds(ids: List<Int>, deletedAt: LocalDateTime)
+
+    @Query("UPDATE todo_items SET deletedAt = NULL WHERE id IN (:ids) AND deletedAt IS NOT NULL")
+    suspend fun restoreByIds(ids: List<Int>)
+
+    @Query(
+        """
+        SELECT * FROM todo_items
+        WHERE deletedAt IS NOT NULL AND deletedAt <= :cutoff
+        ORDER BY deletedAt ASC
+        """
+    )
+    suspend fun getRecentlyDeletedAtOrBefore(cutoff: LocalDateTime): List<TodoItem>
+
+    @Query(
+        """
+        DELETE FROM todo_items
+        WHERE id IN (:ids) AND deletedAt IS NOT NULL AND deletedAt <= :cutoff
+        """
+    )
+    suspend fun hardDeleteRecentlyDeletedByIds(
+        ids: List<Int>,
+        cutoff: LocalDateTime
+    ): Int
 
     @Query(
         """
         UPDATE todo_items
         SET calendarEventId = :calendarEventId,
             calendarSyncedAt = :calendarSyncedAt
-        WHERE id = :id
+        WHERE id = :id AND deletedAt IS NULL
         """
     )
     suspend fun updateCalendarSyncState(
@@ -187,7 +234,7 @@ interface TodoDao {
                 WHEN :isCompleted = 1 THEN COALESCE(completedDateTime, :completedDateTime)
                 ELSE NULL
             END
-        WHERE id IN (:ids)
+        WHERE id IN (:ids) AND deletedAt IS NULL
         """
     )
     suspend fun updateCompletedStatusByIds(
@@ -196,7 +243,12 @@ interface TodoDao {
         completedDateTime: LocalDateTime?
     )
 
-    @Query("SELECT COUNT(*) FROM todo_items WHERE id IN (:ids) AND isCompleted = 1")
+    @Query(
+        "UPDATE todo_items SET isPinned = :isPinned WHERE id = :id AND deletedAt IS NULL"
+    )
+    suspend fun updatePinned(id: Int, isPinned: Boolean)
+
+    @Query("SELECT COUNT(*) FROM todo_items WHERE id IN (:ids) AND isCompleted = 1 AND deletedAt IS NULL")
     suspend fun getCompletedCountByIds(ids: List<Int>): Int
 
     @Query(
@@ -204,7 +256,7 @@ interface TodoDao {
         UPDATE todo_items
         SET isCompleted = 1,
             completedDateTime = COALESCE(completedDateTime, :completedDateTime)
-        WHERE id = :id
+        WHERE id = :id AND deletedAt IS NULL
         """
     )
     suspend fun markCompletedById(id: Int, completedDateTime: LocalDateTime)
@@ -217,7 +269,7 @@ interface TodoDao {
                 WHEN generatedFromTodoId IS NOT NULL THEN COALESCE(occurrenceEditedAt, :editedAt)
                 ELSE occurrenceEditedAt
             END
-        WHERE id IN (:ids)
+        WHERE id IN (:ids) AND deletedAt IS NULL
         """
     )
     suspend fun updateFlagByIds(ids: List<Int>, flag: Int, editedAt: LocalDateTime)
@@ -226,39 +278,40 @@ interface TodoDao {
         """
         UPDATE todo_items
         SET occurrenceEditedAt = COALESCE(occurrenceEditedAt, :editedAt)
-        WHERE id = :id AND generatedFromTodoId IS NOT NULL
+        WHERE id = :id AND generatedFromTodoId IS NOT NULL AND deletedAt IS NULL
         """
     )
     suspend fun markOccurrenceEdited(id: Int, editedAt: LocalDateTime)
 
-    @Query("SELECT COUNT(*) FROM todo_items")
+    @Query("SELECT COUNT(*) FROM todo_items WHERE deletedAt IS NULL")
     fun getTotalCount(): Flow<Int>
 
-    @Query("SELECT COUNT(*) FROM todo_items WHERE isCompleted = true")
+    @Query("SELECT COUNT(*) FROM todo_items WHERE isCompleted = true AND deletedAt IS NULL")
     fun getCompletedCount(): Flow<Int>
 
-    @Query("SELECT COUNT(*) FROM todo_items WHERE dueDate = :date")
+    @Query("SELECT COUNT(*) FROM todo_items WHERE dueDate = :date AND deletedAt IS NULL")
     fun getTodoCountByDueDate(date: LocalDate): Flow<Int>
 
-    @Query("SELECT COUNT(*) FROM todo_items WHERE dueDate = :date AND isCompleted = 1")
+    @Query("SELECT COUNT(*) FROM todo_items WHERE dueDate = :date AND isCompleted = 1 AND deletedAt IS NULL")
     fun getCompletedTodoCountByDueDate(date: LocalDate): Flow<Int>
 
-    @Query("SELECT COUNT(*) FROM todo_items WHERE dueDate >= :startDate AND dueDate <= :endDate")
+    @Query("SELECT COUNT(*) FROM todo_items WHERE dueDate >= :startDate AND dueDate <= :endDate AND deletedAt IS NULL")
     fun getTodoCountByDueDateRange(startDate: LocalDate, endDate: LocalDate): Flow<Int>
 
-    @Query("SELECT COUNT(*) FROM todo_items WHERE dueDate >= :startDate AND dueDate <= :endDate AND isCompleted = 1")
+    @Query("SELECT COUNT(*) FROM todo_items WHERE dueDate >= :startDate AND dueDate <= :endDate AND isCompleted = 1 AND deletedAt IS NULL")
     fun getCompletedTodoCountByDueDateRange(startDate: LocalDate, endDate: LocalDate): Flow<Int>
 
-    @Query("SELECT COUNT(*) FROM todo_items WHERE isCompleted = 0")
+    @Query("SELECT COUNT(*) FROM todo_items WHERE isCompleted = 0 AND deletedAt IS NULL")
     fun getPendingTodoCount(): Flow<Int>
 
-    @Query("SELECT COUNT(*) FROM todo_items WHERE dueDate < :today AND isCompleted = 0")
+    @Query("SELECT COUNT(*) FROM todo_items WHERE dueDate < :today AND isCompleted = 0 AND deletedAt IS NULL")
     fun getOverdueTodoCount(today: LocalDate): Flow<Int>
 
     @Query(
         """
         SELECT COUNT(*) FROM todo_items
         WHERE isCompleted = 0
+            AND deletedAt IS NULL
             AND COALESCE(dueDate, substr(creationDateTime, 1, 10)) < :thresholdDate
     """
     )
@@ -268,7 +321,7 @@ interface TodoDao {
         """
         SELECT MIN(COALESCE(dueDate, substr(creationDateTime, 1, 10)))
         FROM todo_items
-        WHERE isCompleted = 0
+        WHERE isCompleted = 0 AND deletedAt IS NULL
     """
     )
     fun getOldestPendingReferenceDate(): Flow<LocalDate?>
@@ -277,7 +330,7 @@ interface TodoDao {
         """
         SELECT substr(completedDateTime, 1, 10) as date, COUNT(*) as count 
         FROM todo_items 
-        WHERE isCompleted = 1 AND completedDateTime IS NOT NULL 
+        WHERE isCompleted = 1 AND completedDateTime IS NOT NULL AND deletedAt IS NULL
         GROUP BY substr(completedDateTime, 1, 10) 
         ORDER BY date DESC
     """
@@ -290,6 +343,7 @@ interface TodoDao {
         FROM todo_items
         WHERE isCompleted = 1
             AND completedDateTime IS NOT NULL
+            AND deletedAt IS NULL
             AND completedDateTime >= :startDateTime
             AND completedDateTime < :endDateTime
         GROUP BY substr(completedDateTime, 1, 10)
@@ -326,11 +380,11 @@ interface TodoDao {
     @Query("SELECT * FROM todo_items ORDER BY id ASC")
     suspend fun getAllTodosSnapshot(): List<TodoItem>
 
-    @Query("SELECT * FROM todo_items WHERE isCompleted = 0 AND reminderMode IS NOT NULL")
+    @Query("SELECT * FROM todo_items WHERE isCompleted = 0 AND reminderMode IS NOT NULL AND deletedAt IS NULL")
     suspend fun getReminderTodosSnapshot(): List<TodoItem>
 
     @Transaction
-    @Query("SELECT * FROM todo_items ORDER BY id ASC")
+    @Query("SELECT * FROM todo_items WHERE deletedAt IS NULL ORDER BY id ASC")
     suspend fun getAllTodosWithSubTodosSnapshot(): List<TodoItemWithSubTodos>
 
     @Query("SELECT * FROM sub_todo_items ORDER BY id ASC")
@@ -340,7 +394,8 @@ interface TodoDao {
     @Query(
         """
         SELECT * FROM todo_items
-        WHERE (:query = '' OR title LIKE '%' || :query || '%' COLLATE NOCASE)
+        WHERE deletedAt IS NULL
+            AND (:query = '' OR title LIKE '%' || :query || '%' COLLATE NOCASE)
         ORDER BY id DESC
         """
     )

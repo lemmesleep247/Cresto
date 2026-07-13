@@ -39,7 +39,7 @@ val GlasenseSpecsVariant = GlasenseSpecs(
     textFieldCorner = 16.dp,
     textFieldShape = RoundedRectangle(16.dp),
     dialogCorner = 24.dp,
-    dialogShape = RoundedRectangle(24.dp)
+    dialogShape = RoundedRectangle(36.dp)
 )
 
 internal val LocalGlasenseSpecs = staticCompositionLocalOf { GlasenseSpecsStandard }

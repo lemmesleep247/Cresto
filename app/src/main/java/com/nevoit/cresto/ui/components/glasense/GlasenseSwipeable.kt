@@ -39,11 +39,13 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.nevoit.cresto.theme.AppButtonColors
 import com.nevoit.glasense.core.component.Icon
 import com.nevoit.glasense.theme.tokens.Springs
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -60,6 +62,11 @@ enum class SwipeState {
      * The state where the to-do item is swiped to reveal the delete button.
      */
     REVEALED
+}
+
+private enum class SwipeDirection(val sign: Float) {
+    LEFT(-1f),
+    RIGHT(1f)
 }
 
 @Stable
@@ -81,32 +88,37 @@ fun rememberSwipeableListState(): SwipeableListState {
     return remember { SwipeableListState() }
 }
 
+/**
+ * @param rightActions rightActions revealed by swiping the content to the left.
+ * @param leftActions rightActions revealed by swiping the content to the right.
+ */
 @Composable
 fun GlasenseSwipeable(
     modifier: Modifier = Modifier,
     key: Any,
     listState: SwipeableListState,
-    actions: ImmutableList<SwipeableActionButton>,
+    rightActions: ImmutableList<SwipeableActionButton> = persistentListOf(),
     onAction: (Int) -> Unit,
+    leftActions: ImmutableList<SwipeableActionButton> = persistentListOf(),
     content: @Composable () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
 
     var swipeState by remember(key) { mutableStateOf(SwipeState.IDLE) }
     var initialSwipeState by remember(key) { mutableStateOf(SwipeState.IDLE) }
+    var revealedDirection by remember(key) { mutableStateOf<SwipeDirection?>(null) }
+    var initialRevealedDirection by remember(key) { mutableStateOf<SwipeDirection?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     val density = LocalDensity.current
 
-    val actionButtonWidth = 60.dp
-    val actionButtonWidthPx = with(density) { actionButtonWidth.toPx() }
+    val actionButtonWidthPx = with(density) { SwipeActionButtonWidth.toPx() }
+    val gapPx = with(density) { SwipeActionsGap.toPx() }
 
-    val gapPx = with(density) { 6.dp.toPx() }
-
-    val totalActionsWidthPx = actionButtonWidthPx * actions.size + gapPx * 2
-    val snapThresholdPx = -totalActionsWidthPx / 2
-
-    val deepSwipeThresholdPx = totalActionsWidthPx + actionButtonWidthPx
+    val leftActionsWidth = rightActions.actionsWidth()
+    val rightActionsWidth = leftActions.actionsWidth()
+    val leftActionsWidthPx = with(density) { leftActionsWidth.toPx() }
+    val rightActionsWidthPx = with(density) { rightActionsWidth.toPx() }
 
     val velocityThreshold = with(density) { 500.dp.toPx() }
 
@@ -114,40 +126,54 @@ fun GlasenseSwipeable(
 
     val flingOffset = remember(key) { Animatable(0f) }
     val deleteFlingOffset = remember(key) { Animatable(0f) }
-    val deepSwipeAction = remember(actions) {
-        var selectedAction: SwipeableActionButton? = null
-        actions.forEach { action ->
-            if (action.triggerOnDeepSwipe) {
-                require(selectedAction == null) {
-                    "Only one SwipeableActionButton can set triggerOnDeepSwipe."
-                }
-                selectedAction = action
-            }
-        }
-        selectedAction
+    val leftDeepSwipeAction = remember(rightActions) { rightActions.deepSwipeAction("left") }
+    val rightDeepSwipeAction = remember(leftActions) {
+        leftActions.deepSwipeAction("right")
+    }
+
+    fun actionsWidthPx(direction: SwipeDirection): Float = when (direction) {
+        SwipeDirection.LEFT -> leftActionsWidthPx
+        SwipeDirection.RIGHT -> rightActionsWidthPx
+    }
+
+    fun deepSwipeAction(direction: SwipeDirection): SwipeableActionButton? = when (direction) {
+        SwipeDirection.LEFT -> leftDeepSwipeAction
+        SwipeDirection.RIGHT -> rightDeepSwipeAction
     }
 
     val shouldIntercept = listState.currentOpenKey != null && listState.currentOpenKey == key
     var shouldComposeActions by remember(key) { mutableStateOf(false) }
 
-    val revealedThresholds = remember(actions, actionButtonWidthPx, gapPx) {
-        actions.indices.map { index ->
-            val trueIndex = actions.size - index - 1
+    val leftRevealedThresholds = remember(rightActions, actionButtonWidthPx, gapPx) {
+        rightActions.indices.map { index ->
+            val trueIndex = rightActions.size - index - 1
             gapPx + actionButtonWidthPx * trueIndex + actionButtonWidthPx / 2
         }
     }
-    val revealedCount by remember(key, revealedThresholds) {
-        derivedStateOf { revealedThresholds.count { abs(flingOffset.value) >= it } }
+    val rightRevealedThresholds = remember(leftActions, actionButtonWidthPx, gapPx) {
+        leftActions.indices.map { index ->
+            gapPx + actionButtonWidthPx * index + actionButtonWidthPx / 2
+        }
+    }
+    val leftRevealedCount by remember(key, leftRevealedThresholds) {
+        derivedStateOf {
+            leftRevealedThresholds.count { -flingOffset.value >= it }
+        }
+    }
+    val rightRevealedCount by remember(key, rightRevealedThresholds) {
+        derivedStateOf {
+            rightRevealedThresholds.count { flingOffset.value >= it }
+        }
     }
 
-    var isFlyingOut by remember { mutableStateOf(false) }
+    var isFlyingOut by remember(key) { mutableStateOf(false) }
 
     suspend fun resetVisualState() {
         isFlyingOut = false
         deleteFlingOffset.snapTo(0f)
     }
 
-    fun executeAction(action: SwipeableActionButton) {
+    fun executeAction(action: SwipeableActionButton, direction: SwipeDirection) {
         if (action.isDestructive) {
             coroutineScope.launch {
                 repeat(5) {
@@ -156,10 +182,11 @@ fun GlasenseSwipeable(
                 }
             }
             coroutineScope.launch {
-                val flyOutExtraPx = totalActionsWidthPx + with(density) { 8.dp.toPx() }
+                val flyOutExtraPx = actionsWidthPx(direction) + with(density) { 8.dp.toPx() }
                 isFlyingOut = true
                 deleteFlingOffset.animateTo(
-                    targetValue = -(screenWidthPx + flyOutExtraPx) - flingOffset.value,
+                    targetValue =
+                        direction.sign * (screenWidthPx + flyOutExtraPx) - flingOffset.value,
                     animationSpec = tween(
                         100,
                         easing = CubicBezierEasing(
@@ -171,6 +198,7 @@ fun GlasenseSwipeable(
                     )
                 )
                 swipeState = SwipeState.IDLE
+                revealedDirection = null
                 listState.close()
                 onAction(action.index)
             }
@@ -181,6 +209,7 @@ fun GlasenseSwipeable(
             }
             coroutineScope.launch {
                 swipeState = SwipeState.IDLE
+                revealedDirection = null
                 flingOffset.animateTo(0f)
                 shouldComposeActions = false
                 listState.close()
@@ -193,6 +222,7 @@ fun GlasenseSwipeable(
         if (listState.currentOpenKey != key) {
             coroutineScope.launch {
                 swipeState = SwipeState.IDLE
+                revealedDirection = null
                 flingOffset.animateTo(0f)
                 shouldComposeActions = false
                 resetVisualState()
@@ -207,103 +237,63 @@ fun GlasenseSwipeable(
             .fillMaxWidth()
     ) {
         if (shouldComposeActions) {
-            Row(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .width(with(density) { totalActionsWidthPx.toDp() })
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication = null,
-                        onClick = {
-                        }
-                    )
-                    .padding(end = 6.dp),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                actions.forEachIndexed { index, action ->
-                    Box(
-                        modifier = Modifier
-                            .width(actionButtonWidth)
-                            .fillMaxHeight(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        val trueIndex = actions.size - index - 1
-                        val isVisible = trueIndex < revealedCount && !isFlyingOut
+            if (leftActions.isNotEmpty()) {
+                SwipeableActionsRow(
+                    modifier = Modifier.align(Alignment.CenterStart),
+                    actions = leftActions,
+                    totalActionsWidth = rightActionsWidth,
+                    direction = SwipeDirection.RIGHT,
+                    revealedCount = rightRevealedCount,
+                    isFlyingOut = isFlyingOut,
+                    interactionSource = interactionSource,
+                    onAction = { action -> executeAction(action, SwipeDirection.RIGHT) }
+                )
+            }
+            if (rightActions.isNotEmpty()) {
+                SwipeableActionsRow(
+                    modifier = Modifier.align(Alignment.CenterEnd),
+                    actions = rightActions,
+                    totalActionsWidth = leftActionsWidth,
+                    direction = SwipeDirection.LEFT,
+                    revealedCount = leftRevealedCount,
+                    isFlyingOut = isFlyingOut,
+                    interactionSource = interactionSource,
+                    onAction = { action -> executeAction(action, SwipeDirection.LEFT) }
+                )
+            }
+        }
 
-                        val animation = remember { Animatable(0.6f) }
-                        val alphaAnimation = remember { Animatable(0f) }
-                        LaunchedEffect(isVisible) {
-                            if (isVisible) {
-                                launch {
-                                    alphaAnimation.animateTo(
-                                        1f,
-                                        tween(300, easing = LinearOutSlowInEasing)
-                                    )
-                                }
-                                animation.animateTo(1f, tween(300, easing = LinearOutSlowInEasing))
-                            } else {
-                                launch {
-                                    alphaAnimation.animateTo(
-                                        0f,
-                                        tween(100, easing = LinearOutSlowInEasing)
-                                    )
-                                }
-                                animation.animateTo(
-                                    0.6f,
-                                    tween(200, easing = LinearOutSlowInEasing)
-                                )
-                            }
-                        }
-                        GlasenseButton(
-                            enabled = true,
-                            shape = CircleShape,
-                            onClick = {
-                                coroutineScope.launch {
-                                    executeAction(action)
-                                }
-                            },
-                            modifier = Modifier
-                                .graphicsLayer {
-                                    scaleX = animation.value
-                                    scaleY = animation.value
-                                    alpha = alphaAnimation.value
-                                }
-                                .size(48.dp),
-                            colors = AppButtonColors.solid(
-                                color = action.color,
-                                contentColor = Color.White
-                            ),
-                            animated = true
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .glasenseHighlight(100.dp)
-                                    .fillMaxSize(), contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    painter = action.icon,
-                                    contentDescription = action.contentDescription,
-                                    tint = action.iconColor,
-                                    modifier = Modifier
-                                        .width(28.dp)
-                                        .height(28.dp)
-                                )
-                            }
-                        }
+        val deepSwipeDirection by remember(
+            key,
+            leftActionsWidthPx,
+            rightActionsWidthPx,
+            actionButtonWidthPx
+        ) {
+            derivedStateOf {
+                when {
+                    flingOffset.value < -(leftActionsWidthPx + actionButtonWidthPx) -> {
+                        SwipeDirection.LEFT
                     }
+
+                    flingOffset.value > rightActionsWidthPx + actionButtonWidthPx -> {
+                        SwipeDirection.RIGHT
+                    }
+
+                    else -> null
                 }
             }
         }
 
-        val isDeepSwipe by remember(key, deepSwipeThresholdPx) {
-            derivedStateOf { flingOffset.value < -deepSwipeThresholdPx }
-        }
-
-        LaunchedEffect(isDeepSwipe) {
-            if (isDeepSwipe && initialSwipeState == SwipeState.REVEALED) haptic.performHapticFeedback(
-                HapticFeedbackType.GestureThresholdActivate
-            )
+        LaunchedEffect(deepSwipeDirection) {
+            val direction = deepSwipeDirection
+            if (
+                direction != null &&
+                initialSwipeState == SwipeState.REVEALED &&
+                initialRevealedDirection == direction &&
+                deepSwipeAction(direction) != null
+            ) {
+                haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+            }
         }
         Box(
             modifier = Modifier
@@ -312,22 +302,32 @@ fun GlasenseSwipeable(
                     translationX = flingOffset.value + deleteFlingOffset.value
                 }
                 .draggable(
+                    enabled = rightActions.isNotEmpty() || leftActions.isNotEmpty(),
                     orientation = Orientation.Horizontal,
                     state = rememberDraggableState { delta ->
                         coroutineScope.launch {
                             val newOffset = rubberBandSwipeOffset(
                                 currentOffset = flingOffset.value,
                                 delta = delta,
-                                revealOffsetPx = totalActionsWidthPx,
+                                leftRevealOffsetPx = leftActionsWidthPx,
+                                rightRevealOffsetPx = rightActionsWidthPx,
                                 viewportWidthPx = screenWidthPx.toFloat()
                             )
                             flingOffset.snapTo(newOffset)
-                            swipeState =
-                                if (newOffset < snapThresholdPx) SwipeState.REVEALED else SwipeState.IDLE
+                            val direction = newOffset.swipeDirection()
+                            swipeState = if (
+                                direction != null &&
+                                abs(newOffset) > actionsWidthPx(direction) / 2
+                            ) {
+                                SwipeState.REVEALED
+                            } else {
+                                SwipeState.IDLE
+                            }
                         }
                     },
                     onDragStarted = {
                         initialSwipeState = swipeState
+                        initialRevealedDirection = revealedDirection
                         coroutineScope.launch { resetVisualState() }
                         shouldComposeActions = true
                         listState.setOpen(key)
@@ -335,28 +335,44 @@ fun GlasenseSwipeable(
                     onDragStopped = { velocity ->
                         coroutineScope.launch {
                             val currentOffset = flingOffset.value
-                            val isFastSwipe = velocity < -velocityThreshold
-                            val startedRevealed = initialSwipeState == SwipeState.REVEALED
+                            val direction = currentOffset.swipeDirection()
+                            val directionSign = direction?.sign ?: 0f
+                            val directedVelocity = velocity * directionSign
+                            val isFastSwipe = directedVelocity > velocityThreshold
+                            val startedRevealed =
+                                initialSwipeState == SwipeState.REVEALED &&
+                                        initialRevealedDirection == direction
+                            val deepSwipeAction = direction?.let(::deepSwipeAction)
                             val canDeepSwipe = deepSwipeAction != null && startedRevealed
+                            val isDeepSwipe = deepSwipeDirection == direction
+                            val isMovingTowardReveal = directedVelocity >= 0f
+                            val revealWidthPx = direction?.let(::actionsWidthPx) ?: 0f
 
                             val shouldExecuteDeepSwipe =
                                 canDeepSwipe &&
-                                        velocity <= 0 &&
+                                        isMovingTowardReveal &&
                                         (isDeepSwipe || isFastSwipe)
 
                             val shouldReveal =
-                                (canDeepSwipe && isDeepSwipe && velocity > 0) ||
-                                        ((currentOffset < snapThresholdPx || (isFastSwipe && currentOffset < 0)) && velocity <= 0)
+                                direction != null &&
+                                        (
+                                                (canDeepSwipe && isDeepSwipe && !isMovingTowardReveal) ||
+                                                        (
+                                                                (abs(currentOffset) > revealWidthPx / 2 || isFastSwipe) &&
+                                                                        isMovingTowardReveal
+                                                                )
+                                                )
 
                             when {
                                 shouldExecuteDeepSwipe -> {
-                                    executeAction(deepSwipeAction)
+                                    executeAction(deepSwipeAction, direction)
                                 }
 
                                 shouldReveal -> {
                                     swipeState = SwipeState.REVEALED
+                                    revealedDirection = direction
                                     flingOffset.animateTo(
-                                        targetValue = -totalActionsWidthPx,
+                                        targetValue = directionSign * revealWidthPx,
                                         animationSpec = Springs.bouncy(400),
                                         initialVelocity = velocity
                                     )
@@ -367,8 +383,9 @@ fun GlasenseSwipeable(
                                         listState.close()
                                     }
                                     swipeState = SwipeState.IDLE
+                                    revealedDirection = null
                                     val finalVelocity =
-                                        if (currentOffset == 0f && velocity > 0) 0f else velocity
+                                        if (currentOffset == 0f) 0f else velocity
                                     flingOffset.animateTo(
                                         targetValue = 0f,
                                         animationSpec = Springs.bouncy(400),
@@ -401,6 +418,115 @@ fun GlasenseSwipeable(
     }
 }
 
+@Composable
+private fun SwipeableActionsRow(
+    modifier: Modifier,
+    actions: ImmutableList<SwipeableActionButton>,
+    totalActionsWidth: Dp,
+    direction: SwipeDirection,
+    revealedCount: Int,
+    isFlyingOut: Boolean,
+    interactionSource: MutableInteractionSource,
+    onAction: (SwipeableActionButton) -> Unit
+) {
+    Row(
+        modifier = modifier
+            .width(totalActionsWidth)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = {}
+            )
+            .then(
+                if (direction == SwipeDirection.LEFT) {
+                    Modifier.padding(end = SwipeActionsGap)
+                } else {
+                    Modifier.padding(start = SwipeActionsGap)
+                }
+            ),
+        horizontalArrangement = if (direction == SwipeDirection.LEFT) {
+            Arrangement.End
+        } else {
+            Arrangement.Start
+        },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        actions.forEachIndexed { index, action ->
+            Box(
+                modifier = Modifier
+                    .width(SwipeActionButtonWidth)
+                    .fillMaxHeight(),
+                contentAlignment = Alignment.Center,
+            ) {
+                val revealIndex = if (direction == SwipeDirection.LEFT) {
+                    actions.size - index - 1
+                } else {
+                    index
+                }
+                val isVisible = revealIndex < revealedCount && !isFlyingOut
+
+                val animation = remember(action.index) { Animatable(0.6f) }
+                val alphaAnimation = remember(action.index) { Animatable(0f) }
+                LaunchedEffect(isVisible) {
+                    if (isVisible) {
+                        launch {
+                            alphaAnimation.animateTo(
+                                1f,
+                                tween(300, easing = LinearOutSlowInEasing)
+                            )
+                        }
+                        animation.animateTo(1f, tween(300, easing = LinearOutSlowInEasing))
+                    } else {
+                        launch {
+                            alphaAnimation.animateTo(
+                                0f,
+                                tween(100, easing = LinearOutSlowInEasing)
+                            )
+                        }
+                        animation.animateTo(
+                            0.6f,
+                            tween(200, easing = LinearOutSlowInEasing)
+                        )
+                    }
+                }
+                GlasenseButton(
+                    enabled = true,
+                    shape = CircleShape,
+                    onClick = { onAction(action) },
+                    modifier = Modifier
+                        .graphicsLayer {
+                            scaleX = animation.value
+                            scaleY = animation.value
+                            alpha = alphaAnimation.value
+                        }
+                        .size(48.dp),
+                    colors = AppButtonColors.solid(
+                        color = action.color,
+                        contentColor = Color.White
+                    ),
+                    animated = true
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .glasenseHighlight(100.dp)
+                            .fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = action.icon,
+                            contentDescription = action.contentDescription,
+                            tint = action.iconColor,
+                            modifier = Modifier
+                                .width(28.dp)
+                                .height(28.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Immutable
 data class SwipeableActionButton(
     val index: Int,
@@ -413,22 +539,60 @@ data class SwipeableActionButton(
 )
 
 private const val SwipeRubberBandConstant = 0.55f
+private val SwipeActionButtonWidth = 60.dp
+private val SwipeActionsGap = 6.dp
 
-private fun rubberBandSwipeOffset(
+private fun ImmutableList<SwipeableActionButton>.actionsWidth(): Dp {
+    return if (isEmpty()) 0.dp else SwipeActionButtonWidth * size + SwipeActionsGap * 2
+}
+
+private fun ImmutableList<SwipeableActionButton>.deepSwipeAction(
+    directionName: String
+): SwipeableActionButton? {
+    var selectedAction: SwipeableActionButton? = null
+    forEach { action ->
+        if (action.triggerOnDeepSwipe) {
+            require(selectedAction == null) {
+                "Only one $directionName-swipe SwipeableActionButton can set triggerOnDeepSwipe."
+            }
+            selectedAction = action
+        }
+    }
+    return selectedAction
+}
+
+private fun Float.swipeDirection(): SwipeDirection? = when {
+    this < 0f -> SwipeDirection.LEFT
+    this > 0f -> SwipeDirection.RIGHT
+    else -> null
+}
+
+internal fun rubberBandSwipeOffset(
     currentOffset: Float,
     delta: Float,
-    revealOffsetPx: Float,
+    leftRevealOffsetPx: Float,
+    rightRevealOffsetPx: Float,
     viewportWidthPx: Float
 ): Float {
-    val revealOffset = revealOffsetPx.coerceAtLeast(0f)
-    val nextOffset = (currentOffset + delta).coerceAtMost(0f)
-    if (nextOffset >= -revealOffset || viewportWidthPx <= 0f) return nextOffset
+    val leftRevealOffset = leftRevealOffsetPx.coerceAtLeast(0f)
+    val rightRevealOffset = rightRevealOffsetPx.coerceAtLeast(0f)
+    val nextOffset = currentOffset + delta
+    val direction = nextOffset.swipeDirection() ?: return 0f
+    val revealOffset = when (direction) {
+        SwipeDirection.LEFT -> leftRevealOffset
+        SwipeDirection.RIGHT -> rightRevealOffset
+    }
+    if (revealOffset == 0f) return 0f
 
-    val overscroll = abs(nextOffset) - revealOffset
-    val previousOverscroll = (abs(currentOffset) - revealOffset).coerceAtLeast(0f)
+    val directedOffset = nextOffset * direction.sign
+    if (directedOffset <= revealOffset || viewportWidthPx <= 0f) return nextOffset
+
+    val directedCurrentOffset = currentOffset * direction.sign
+    val overscroll = directedOffset - revealOffset
+    val previousOverscroll = (directedCurrentOffset - revealOffset).coerceAtLeast(0f)
     val dimension = viewportWidthPx.coerceAtLeast(revealOffset)
     val resistance = dimension / (dimension + SwipeRubberBandConstant * previousOverscroll)
     val resistedOverscroll = previousOverscroll + (overscroll - previousOverscroll) * resistance
 
-    return -revealOffset - resistedOverscroll.coerceAtLeast(0f)
+    return direction.sign * (revealOffset + resistedOverscroll.coerceAtLeast(0f))
 }

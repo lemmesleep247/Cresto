@@ -1,5 +1,6 @@
 package com.nevoit.cresto.data.todo
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -30,6 +31,7 @@ enum class TodoReminderMode {
         Index(value = ["isCompleted", "dueDate"]),
         Index(value = ["creationDateTime"]),
         Index(value = ["groupId", "isCompleted"]),
+        Index(value = ["deletedAt"]),
         Index(value = ["repeatRuleId"]),
         Index(value = ["seriesId", "occurrenceDate"], unique = true),
         Index(value = ["generatedFromTodoId"])
@@ -42,9 +44,12 @@ data class TodoItem(
     val dueDate: LocalDate? = null,
     val creationDateTime: LocalDateTime = LocalDateTime.now(),
     val isCompleted: Boolean = false,
+    @ColumnInfo(defaultValue = "0")
+    val isPinned: Boolean = false,
     val flag: Int = 0,
     val groupId: Int? = null,
     val completedDateTime: LocalDateTime? = null,
+    val deletedAt: LocalDateTime? = null,
     val notes: String = "",
     val startTime: LocalTime? = null,
     val endTime: LocalTime? = null,

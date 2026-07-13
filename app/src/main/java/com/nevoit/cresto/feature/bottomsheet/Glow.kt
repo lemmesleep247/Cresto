@@ -31,6 +31,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.kyant.backdrop.backdrops.emptyBackdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.highlight.Highlight
+import com.kyant.backdrop.highlight.HighlightStyle
 import com.kyant.shapes.Capsule
 import com.nevoit.cresto.R
 import com.nevoit.cresto.theme.AppButtonColors
@@ -101,7 +105,24 @@ fun GlowContainer(
                         Modifier
                     }
                 )
-                .glasenseHighlight(56.dp)
+                .then(
+                    if (LocalGlasenseSettings.current.liquidGlass) Modifier.drawBackdrop(
+                        shape = { Capsule() },
+                        backdrop = emptyBackdrop(),
+                        shadow = null,
+                        highlight = {
+                            Highlight.Default.copy(
+                                style = HighlightStyle.Default(
+                                    angle = 90f
+                                ),
+                                blurRadius = 1.dp
+                            )
+                        },
+                        effects = {}
+                    ) else Modifier.glasenseHighlight(
+                        56.dp
+                    )
+                )
         ) {
             RotatingGlow(
                 modifier = Modifier
