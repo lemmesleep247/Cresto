@@ -1,5 +1,12 @@
 <resources>
     <string name="app_name">Cresto</string>
+    <string name="today_widget_name">Today</string>
+    <string name="today_widget_description">See today\'s incomplete todos</string>
+    <string name="today_widget_empty">Nothing due today</string>
+    <plurals name="today_widget_remaining">
+        <item quantity="one">%d todo remaining</item>
+        <item quantity="other">%d todos remaining</item>
+    </plurals>
     <string name="all">All</string>
     <string name="ungrouped_todos">Ungrouped</string>
     <string name="mind_flow">Mind Flow</string>
