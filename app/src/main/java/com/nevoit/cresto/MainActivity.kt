@@ -9,15 +9,19 @@ import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.view.WindowCompat
+import androidx.glance.appwidget.updateAll
+import androidx.lifecycle.lifecycleScope
 import com.nevoit.cresto.feature.guide.GuideActivity
 import com.nevoit.cresto.feature.main.MainScreen
 import com.nevoit.cresto.feature.screenextract.ScreenExtractEvents
 import com.nevoit.cresto.feature.settings.util.SettingsManager
+import com.nevoit.cresto.feature.widget.TodayTodoWidget
 import com.nevoit.cresto.theme.AppColors
 import com.nevoit.cresto.theme.GlasenseTheme
 import com.nevoit.cresto.util.NotificationPermissionCompat
 import com.nevoit.glasense.core.interaction.overscroll.rememberOffsetOverscrollFactory
 import com.nevoit.glasense.theme.LocalGlasenseContentColor
+import kotlinx.coroutines.launch
 
 private const val REQUEST_POST_NOTIFICATIONS = 1001
 
@@ -73,6 +77,13 @@ class MainActivity : AppCompatActivity() {
         ScreenExtractEvents.emitError(message)
         intent.removeExtra(ScreenExtractEvents.EXTRA_SHOW_ERROR_DIALOG)
         intent.removeExtra(ScreenExtractEvents.EXTRA_ERROR_MESSAGE)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        lifecycleScope.launch {
+            TodayTodoWidget.updateAll(applicationContext)
+        }
     }
 
     private fun requestNotificationPermissionIfNeeded() {
