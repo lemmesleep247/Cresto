@@ -4,6 +4,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import androidx.core.app.NotificationManagerCompat
 import com.nevoit.cresto.R
 import com.nevoit.cresto.data.todo.TodoItem
@@ -45,7 +46,12 @@ class TodoAlarmScheduler(
 
         val pendingIntent = createPendingIntent(todo)
 
-        if (!alarmManager.canScheduleExactAlarms()) {
+        // canScheduleExactAlarms() is API 31+; on Android 11 (API 30) exact alarms
+        // are always permitted, so fall back to setExactAndAllowWhileIdle directly.
+        val needsExactAlarmPermissionCheck =
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+
+        if (needsExactAlarmPermissionCheck && !alarmManager.canScheduleExactAlarms()) {
             try {
                 alarmManager.setAlarmClock(
                     AlarmManager.AlarmClockInfo(
