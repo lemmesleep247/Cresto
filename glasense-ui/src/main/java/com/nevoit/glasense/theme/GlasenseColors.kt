@@ -104,7 +104,7 @@ val GlasenseDarkPalette = GlasenseColors(
     highlightText = Yellow500,
     error = Red500,
     onError = Color.White,
-    segmentedControlIndicator = Color(0xFF636366)
+    segmentedControlIndicator = Color(0xFF636366),
 )
 
 internal val LocalGlasenseColors = staticCompositionLocalOf { GlasenseLightPalette }

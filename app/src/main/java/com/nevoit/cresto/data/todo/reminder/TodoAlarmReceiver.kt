@@ -14,6 +14,7 @@ import androidx.core.app.NotificationManagerCompat
 import com.nevoit.cresto.R
 import com.nevoit.cresto.data.todo.EXTRA_TODO_ID
 import com.nevoit.cresto.data.todo.TodoDatabase
+import com.nevoit.cresto.data.todo.TodoItem
 import com.nevoit.cresto.data.todo.TodoRepository
 import com.nevoit.cresto.feature.detail.DetailActivity
 import com.nevoit.cresto.util.NotificationPermissionCompat
@@ -57,16 +58,54 @@ class TodoAlarmReceiver : BroadcastReceiver() {
             return
         }
 
-        val title = intent.getStringExtra(EXTRA_REMINDER_TODO_TITLE)
+        val pendingResult = goAsync()
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            try {
+                showReminderNotification(
+                    context = context.applicationContext,
+                    intent = intent,
+                    todoId = todoId,
+                    todo = getTodoSnapshot(todoId)
+                )
+            } finally {
+                pendingResult.finish()
+            }
+        }
+    }
+
+    private suspend fun getTodoSnapshot(todoId: Int): TodoItem? {
+        return try {
+            val koin = GlobalContext.getOrNull() ?: return null
+            koin.get<TodoDatabase>().todoDao().getTodoWithSubTodosByIdSnapshot(todoId)?.todoItem
+        } catch (_: Exception) {
+            // Keep the scheduled Intent extras as a fallback if storage is unavailable at delivery.
+            null
+        }
+    }
+
+    private fun showReminderNotification(
+        context: Context,
+        intent: Intent,
+        todoId: Int,
+        todo: TodoItem?
+    ) {
+        val title = todo?.title
+            ?.takeIf { it.isNotBlank() }
+            ?: intent.getStringExtra(EXTRA_REMINDER_TODO_TITLE)
             ?.takeIf { it.isNotBlank() }
             ?: context.getString(R.string.app_name)
-        val contentText = intent.getStringExtra(EXTRA_REMINDER_TODO_NOTES)
+        val contentText = todo?.notes
+            ?.takeIf { it.isNotBlank() }
+            ?: todo?.buildReminderNotificationText(context)
+            ?: intent.getStringExtra(EXTRA_REMINDER_TODO_NOTES)
             ?.takeIf { it.isNotBlank() }
             ?: intent.getStringExtra(EXTRA_REMINDER_FALLBACK_TEXT)
                 ?.takeIf { it.isNotBlank() }
             ?: context.getString(R.string.reminder_notification_default_content)
-        val persistent = intent.getBooleanExtra(EXTRA_REMINDER_PERSISTENT, false)
-        val strong = intent.getBooleanExtra(EXTRA_REMINDER_STRONG, false)
+        val persistent = todo?.reminderPersistent
+            ?: intent.getBooleanExtra(EXTRA_REMINDER_PERSISTENT, false)
+        val strong = todo?.reminderStrong
+            ?: intent.getBooleanExtra(EXTRA_REMINDER_STRONG, false)
         val channelId = if (strong) TODO_STRONG_REMINDER_CHANNEL_ID else TODO_REMINDER_CHANNEL_ID
         val soundUri = RingtoneManager.getDefaultUri(
             if (strong) RingtoneManager.TYPE_ALARM else RingtoneManager.TYPE_NOTIFICATION
