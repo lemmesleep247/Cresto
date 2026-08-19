@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">Cresto</string>
-    <string name="all_todos">すべてのToDo</string>
     <string name="mind_flow">マインドフロー</string>
     <string name="settings">設定</string>
     <string name="cancel">キャンセル</string>
