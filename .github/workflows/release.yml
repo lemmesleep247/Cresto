@@ -160,22 +160,69 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      # ------------------------------------------------------------
+      # 8. Update Android SDK tools and install API 37
+      # ------------------------------------------------------------
       - name: Install Android SDK 37
+        shell: bash
         run: |
-          sdkmanager \
-            "platforms;android-37" \
-            "build-tools;37.0.0"
+          echo "Android SDK: $ANDROID_HOME"
 
+          echo "Updating SDK package metadata..."
+          sdkmanager --update
+
+          echo "Accepting Android SDK licenses..."
           yes | sdkmanager --licenses > /dev/null || true
 
+          echo "Available Android platforms:"
+          sdkmanager --list | grep -E "platforms;android-[0-9]+" | head -20 || true
+
+          echo "Installing Android SDK Platform 37..."
+          sdkmanager "platforms;android-37"
+
+          echo "Installing platform tools..."
+          sdkmanager "platform-tools"
+
+          echo ""
+          echo "Installed Android platforms:"
+          sdkmanager --list_installed | grep "platforms;android" || true
+
       # ------------------------------------------------------------
-      # 8. Prepare Gradle
+      # 9. Find a compatible Build Tools version
+      # ------------------------------------------------------------
+      - name: Determine Build Tools version
+        id: build-tools
+        shell: bash
+        run: |
+          echo "Installed Build Tools:"
+
+          ls -1 "$ANDROID_HOME/build-tools" || true
+
+          BUILD_TOOLS_VERSION=$(find "$ANDROID_HOME/build-tools" \
+            -mindepth 1 \
+            -maxdepth 1 \
+            -type d \
+            -printf '%f\n' \
+            | sort -V \
+            | tail -n 1)
+
+          if [ -z "$BUILD_TOOLS_VERSION" ]; then
+            echo "ERROR: No Android Build Tools found."
+            exit 1
+          fi
+
+          echo "Using Build Tools: $BUILD_TOOLS_VERSION"
+
+          echo "VERSION=$BUILD_TOOLS_VERSION" >> "$GITHUB_OUTPUT"
+
+      # ------------------------------------------------------------
+      # 10. Prepare Gradle
       # ------------------------------------------------------------
       - name: Make Gradle executable
         run: chmod +x ./gradlew
 
       # ------------------------------------------------------------
-      # 9. Build release APK
+      # 11. Build release APK
       # ------------------------------------------------------------
       - name: Build release APK
         run: |
@@ -184,7 +231,7 @@ jobs:
             --stacktrace
 
       # ------------------------------------------------------------
-      # 10. Decode release keystore
+      # 12. Decode release keystore
       # ------------------------------------------------------------
       - name: Decode release keystore
         env:
@@ -203,7 +250,7 @@ jobs:
           fi
 
       # ------------------------------------------------------------
-      # 11. Locate APK
+      # 13. Locate APK
       # ------------------------------------------------------------
       - name: Locate release APK
         id: apk
@@ -226,23 +273,34 @@ jobs:
           echo "input=$APK" >> "$GITHUB_OUTPUT"
 
       # ------------------------------------------------------------
-      # 12. Zipalign
+      # 14. Zipalign APK
       # ------------------------------------------------------------
       - name: Zipalign APK
+        env:
+          BUILD_TOOLS_VERSION: ${{ steps.build-tools.outputs.VERSION }}
         run: |
           APK="${{ steps.apk.outputs.input }}"
           ALIGNED="app/build/outputs/apk/release/cresto-release-aligned.apk"
 
-          "$ANDROID_HOME/build-tools/37.0.0/zipalign" \
+          ZIPALIGN="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/zipalign"
+
+          if [ ! -f "$ZIPALIGN" ]; then
+            echo "ERROR: zipalign not found:"
+            echo "$ZIPALIGN"
+            exit 1
+          fi
+
+          "$ZIPALIGN" \
             -v -p 4 \
             "$APK" \
             "$ALIGNED"
 
       # ------------------------------------------------------------
-      # 13. Sign APK
+      # 15. Sign APK
       # ------------------------------------------------------------
       - name: Sign APK
         env:
+          BUILD_TOOLS_VERSION: ${{ steps.build-tools.outputs.VERSION }}
           KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
@@ -250,7 +308,15 @@ jobs:
           ALIGNED="app/build/outputs/apk/release/cresto-release-aligned.apk"
           SIGNED="app/build/outputs/apk/release/cresto-release.apk"
 
-          "$ANDROID_HOME/build-tools/37.0.0/apksigner" sign \
+          APKSIGNER="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner"
+
+          if [ ! -f "$APKSIGNER" ]; then
+            echo "ERROR: apksigner not found:"
+            echo "$APKSIGNER"
+            exit 1
+          fi
+
+          "$APKSIGNER" sign \
             --ks release.keystore \
             --ks-key-alias "$KEY_ALIAS" \
             --ks-pass "pass:$KEYSTORE_PASSWORD" \
@@ -259,16 +325,20 @@ jobs:
             "$ALIGNED"
 
       # ------------------------------------------------------------
-      # 14. Verify signature
+      # 16. Verify APK signature
       # ------------------------------------------------------------
       - name: Verify APK signature
+        env:
+          BUILD_TOOLS_VERSION: ${{ steps.build-tools.outputs.VERSION }}
         run: |
-          "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify \
+          APKSIGNER="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner"
+
+          "$APKSIGNER" verify \
             --verbose \
             app/build/outputs/apk/release/cresto-release.apk
 
       # ------------------------------------------------------------
-      # 15. Rename APK
+      # 17. Rename APK
       # ------------------------------------------------------------
       - name: Rename APK
         run: |
@@ -281,7 +351,7 @@ jobs:
             "app/build/outputs/apk/release/Cresto-${VERSION}.apk"
 
       # ------------------------------------------------------------
-      # 16. Create GitHub Release
+      # 18. Create GitHub Release
       # ------------------------------------------------------------
       - name: Create GitHub Release
         env:
@@ -296,7 +366,7 @@ jobs:
             --generate-notes
 
       # ------------------------------------------------------------
-      # 17. Cleanup keystore
+      # 19. Cleanup keystore
       # ------------------------------------------------------------
       - name: Cleanup keystore
         if: always()
