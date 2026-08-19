@@ -9,13 +9,16 @@ import com.nevoit.glasense.core.interaction.DimIndication
 
 fun Modifier.nullClickable(
     enabled: Boolean = true
-): Modifier = composed {
-    this.clickable(
-        interactionSource = remember { MutableInteractionSource() },
-        indication = null,
-        enabled = enabled,
-        onClick = {}
-    )
+): Modifier {
+    if (!enabled) return Modifier
+    return composed {
+        this.clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            enabled = true,
+            onClick = {}
+        )
+    }
 }
 
 fun Modifier.clickable(
