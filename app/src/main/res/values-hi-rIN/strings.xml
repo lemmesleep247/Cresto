@@ -1,6 +1,5 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Cresto</string>
-    <string name="all_todos">सभी कार्य</string>
     <string name="mind_flow">विचार प्रवाह</string>
     <string name="settings">सेटिंग्स</string>
     <string name="cancel">रद्द करें</string>
