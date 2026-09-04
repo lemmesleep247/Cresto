@@ -21,9 +21,9 @@ import com.nevoit.glasense.theme.GlasenseSpecs
 import com.nevoit.glasense.theme.GlasenseSpecsStandard
 import com.nevoit.glasense.theme.GlasenseSpecsVariant
 import com.nevoit.glasense.theme.GlasenseTheme
-import com.nevoit.glasense.theme.purify
 import com.nevoit.glasense.theme.tokens.Blue500
-import com.nevoit.glasense.theme.umamify
+import com.nevoit.glasense.theme.utility.purify
+import com.nevoit.glasense.theme.utility.umamify
 
 val AppColors: GlasenseColors
     @Composable
@@ -75,7 +75,8 @@ private fun glasenseColorsFromScheme(scheme: ColorScheme, isDark: Boolean): Glas
         segmentedControlBackground = scheme.secondaryContainer,
         onSegmentedControlBackground = scheme.onSecondaryContainer,
         segmentedControlIndicator = scheme.secondary,
-        onSegmentedControlIndicator = scheme.onSecondary
+        onSegmentedControlIndicator = scheme.onSecondary,
+        shadow = Color.Black
     )
 }
 
@@ -155,7 +156,7 @@ fun GlasenseTheme(
     val liteMode = SettingsManager.isLiteModeState.value
 
     val glasenseSettings = remember(liquidGlass, liteMode) {
-        GlasenseSettings(
+        ThemeSettings(
             liquidGlass = liquidGlass,
             liteMode = liteMode,
             dynamicColor = dynamicColor
@@ -179,7 +180,7 @@ fun GlasenseTheme(
         specs = glasenseSpecs
     ) {
         CompositionLocalProvider(
-            LocalGlasenseSettings provides glasenseSettings
+            LocalThemeSettings provides glasenseSettings
         ) {
             content()
         }

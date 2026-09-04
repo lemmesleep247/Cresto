@@ -59,9 +59,6 @@ import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
-import com.kyant.backdrop.effects.lens
-import com.kyant.backdrop.highlight.Highlight
-import com.kyant.backdrop.highlight.HighlightStyle
 import com.kyant.shapes.Capsule
 import com.nevoit.cresto.R
 import com.nevoit.cresto.data.todo.TodoItem
@@ -99,6 +96,7 @@ import com.nevoit.cresto.ui.components.packed.TodoReminderConfig
 import com.nevoit.cresto.ui.modifier.pressIndentShaderEffect
 import com.nevoit.cresto.ui.modifier.shaderRipple
 import com.nevoit.glasense.core.component.Icon
+import com.nevoit.glasense.material.glass
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import java.time.LocalDate
@@ -367,7 +365,24 @@ fun MainScreen() {
         )
         drawContent()
     }
-
+    val glassModifier = if (liquidGlass) Modifier.glass(
+        backdrop = backdrop,
+        shape = Capsule(),
+        onDrawSurface = { drawRect(color = floatingBarColor) }
+    ) else Modifier.drawBackdrop(
+        backdrop = backdrop,
+        shape = { Capsule() },
+        shadow = null,
+        innerShadow = null,
+        highlight = { null },
+        effects = {
+            blur(
+                32f.dp.toPx(),
+                TileMode.Decal
+            )
+        },
+        onDrawSurface = { drawRect(color = floatingBarColor) }
+    )
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -452,29 +467,7 @@ fun MainScreen() {
                                 .onGloballyPositioned { coordinates ->
                                     moreButtonBounds = coordinates
                                 }
-                                .drawBackdrop(
-                                    backdrop = backdrop,
-                                    shape = { Capsule() },
-                                    shadow = null,
-                                    innerShadow = null,
-                                    highlight = {
-                                        if (liquidGlass) Highlight.Default.copy(
-                                            style = HighlightStyle.Default(
-                                                angle = 90f
-                                            )
-                                        ) else null
-                                    },
-                                    effects = {
-                                        blur(
-                                            if (liquidGlass) 8f.dp.toPx() else 32f.dp.toPx(),
-                                            TileMode.Decal
-                                        )
-                                        if (liquidGlass) lens(16f.dp.toPx(), 48f.dp.toPx())
-                                    },
-                                    onDrawSurface = {
-                                        drawRect(color = floatingBarColor)
-                                    }
-                                ),
+                                .then(glassModifier),
                             colors = AppButtonColors.action()
                         ) {
                             Icon(
@@ -488,30 +481,7 @@ fun MainScreen() {
                             interactionSource = sharedInteractionSource,
                             shape = Capsule(),
                             onClick = {},
-                            modifier = Modifier
-                                .drawBackdrop(
-                                    backdrop = backdrop,
-                                    shape = { Capsule() },
-                                    shadow = null,
-                                    innerShadow = null,
-                                    highlight = {
-                                        if (liquidGlass) Highlight.Default.copy(
-                                            style = HighlightStyle.Default(
-                                                angle = 90f
-                                            )
-                                        ) else null
-                                    },
-                                    effects = {
-                                        blur(
-                                            if (liquidGlass) 8f.dp.toPx() else 32f.dp.toPx(),
-                                            TileMode.Decal
-                                        )
-                                        if (liquidGlass) lens(16f.dp.toPx(), 48f.dp.toPx())
-                                    },
-                                    onDrawSurface = {
-                                        drawRect(color = floatingBarColor)
-                                    }
-                                ),
+                            modifier = Modifier.then(glassModifier),
                             colors = AppButtonColors.action()
                         ) {
                             Row(
@@ -599,29 +569,7 @@ fun MainScreen() {
                                 )
                             },
                             modifier = Modifier
-                                .drawBackdrop(
-                                    backdrop = backdrop,
-                                    shape = { Capsule() },
-                                    shadow = null,
-                                    innerShadow = null,
-                                    highlight = {
-                                        if (liquidGlass) Highlight.Default.copy(
-                                            style = HighlightStyle.Default(
-                                                angle = 90f
-                                            )
-                                        ) else null
-                                    },
-                                    effects = {
-                                        blur(
-                                            if (liquidGlass) 8f.dp.toPx() else 32f.dp.toPx(),
-                                            TileMode.Decal
-                                        )
-                                        if (liquidGlass) lens(16f.dp.toPx(), 48f.dp.toPx())
-                                    },
-                                    onDrawSurface = {
-                                        drawRect(color = floatingBarColor)
-                                    }
-                                ),
+                                .then(glassModifier),
                             colors = AppButtonColors.action()
                         ) {
                             Icon(

@@ -23,6 +23,26 @@ plugins {
     alias(libs.plugins.aboutLibraries)
 }
 
+fun signingProperty(name: String) =
+    providers.gradleProperty(name).orElse(providers.environmentVariable(name))
+
+val signingStoreFile = signingProperty("MOMENTO_SIGNING_STORE_FILE")
+val signingStorePassword = signingProperty("MOMENTO_SIGNING_STORE_PASSWORD")
+val signingKeyAlias = signingProperty("MOMENTO_SIGNING_KEY_ALIAS")
+val signingKeyPassword = signingProperty("MOMENTO_SIGNING_KEY_PASSWORD")
+val signingProperties = listOf(
+    signingStoreFile,
+    signingStorePassword,
+    signingKeyAlias,
+    signingKeyPassword,
+)
+val hasSigningProperties = signingProperties.any { it.isPresent }
+val isSigningConfigured = signingProperties.all { it.isPresent }
+
+check(!hasSigningProperties || isSigningConfigured) {
+    "Momento signing requires all MOMENTO_SIGNING_* properties to be configured"
+}
+
 android {
     namespace = "com.nevoit.cresto"
     compileSdk {
@@ -47,14 +67,31 @@ android {
         }
     }
 
+    signingConfigs {
+        if (isSigningConfigured) {
+            create("momento") {
+                storeFile = file(signingStoreFile.get())
+                storePassword = signingStorePassword.get()
+                keyAlias = signingKeyAlias.get()
+                keyPassword = signingKeyPassword.get()
+            }
+        }
+    }
+
+
     buildTypes {
+        debug {
+            if (isSigningConfigured) {
+                signingConfig = signingConfigs.getByName("momento")
+            }
+        }
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            if (isSigningConfigured) {
+                signingConfig = signingConfigs.getByName("momento")
+            }
+            optimization {
+                enable = true
+            }
         }
     }
 
